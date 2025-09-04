@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block content %}
+    <h1 class="mb-4"><i class="fas fa-chart-line me-2"></i>Dashboard do Sistema de Chamados</h1>
+
+    <div class="card text-center mb-4 shadow-sm">
+        <div class="card-body">
+            <h5 class="card-title">Total de Chamados Abertos</h5>
+            <p class="card-text fs-2 fw-bold text-primary">{{ total_tickets }}</p>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-primary text-white">Chamados por Status</div>
+                <div class="card-body">
+                    <canvas id="statusChart" data-chartdata="{{ status_data }}"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-success text-white">Chamados por Setor de Destino</div>
+                <div class="card-body">
+                    <canvas id="sectorChart" data-chartdata="{{ sector_data }}"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 mb-4">
+            {# Este gráfico de prioridade ocupa apenas meia largura #}
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-warning text-dark">Chamados por Prioridade</div>
+                <div class="card-body">
+                    <canvas id="priorityChart" data-chartdata="{{ priority_data }}"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock content %}

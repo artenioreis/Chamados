@@ -1,0 +1,14 @@
+/* Você pode adicionar estilos customizados aqui se não usar Tailwind ou quiser complementar */
+/* Este arquivo seria mais relevante se estivéssemos usando um CSS mais tradicional.
+   Com TailwindCSS, a maior parte do estilo é aplicada diretamente nos templates. */
+
+/* Exemplo de estilo para o Kanban */
+.kanban-column {
+    min-width: 280px;
+    max-width: 320px;
+    flex-shrink: 0;
+}
+
+.kanban-card {
+    cursor: grab;
+}

@@ -1,0 +1,51 @@
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="{{ url_for('main.home') }}">Chamados Internos</a> {# CORRIGIDO AQUI #}
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('main.home') }}">Início</a> {# CORRIGIDO AQUI #}
+                </li>
+                {% if current_user.is_authenticated %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('main.create_ticket') }}">Abrir Chamado</a> {# CORRIGIDO AQUI #}
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('main.tickets_kanban') }}">Kanban de Chamados</a> {# CORRIGIDO AQUI #}
+                    </li>
+                    {% if current_user.access_level == 'administrador' or current_user.access_level == 'tecnico' %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('main.dashboard') }}">Dashboard</a> {# CORRIGIDO AQUI #}
+                        </li>
+                    {% endif %}
+                    {% if current_user.access_level == 'administrador' %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('main.register') }}">Cadastrar Usuário</a> {# CORRIGIDO AQUI #}
+                        </li>
+                    {% endif %}
+                {% endif %}
+            </ul>
+            <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
+                {% if current_user.is_authenticated %}
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            {{ current_user.name }} ({{ current_user.sector }})
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
+                            <li><a class="dropdown-item" href="#">Perfil</a></li> {# Futura funcionalidade #}
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{{ url_for('main.logout') }}">Sair</a></li> {# CORRIGIDO AQUI #}
+                        </ul>
+                    </li>
+                {% else %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('main.login') }}">Login</a> {# CORRIGIDO AQUI #}
+                    </li>
+                {% endif %}
+            </ul>
+        </div>
+    </div>
+</nav>

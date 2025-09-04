@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block content %}
+    <h1 class="mb-4"><i class="fas fa-columns me-2"></i>Kanban de Chamados</h1>
+
+    <div class="d-flex flex-row overflow-auto pb-3 kanban-container">
+        {% set statuses = ['Aberto', 'Em Atendimento', 'Resolvido', 'Fechado'] %}
+        {% for status in statuses %}
+            <div class="card bg-light shadow-sm me-3 kanban-column">
+                <div class="card-header text-center bg-secondary text-white">
+                    <h4 class="mb-0">{{ status }}</h4>
+                </div>
+                <div class="card-body p-2 kanban-column-body">
+                    {% set filtered_tickets = tickets | selectattr('status', 'equalto', status) | list %}
+                    {% if filtered_tickets %}
+                        {% for ticket in filtered_tickets %}
+                            <div class="mb-2 kanban-card">
+                                {% include 'components/ticket_card.html' %}
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="alert alert-secondary text-center small mt-3" role="alert">
+                            Nenhum chamado neste status.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+{% endblock content %}
