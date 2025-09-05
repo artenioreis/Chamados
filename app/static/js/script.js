@@ -83,3 +83,76 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+// app/static/js/script.js
+
+// ... (código dos gráficos que já existe) ...
+
+// Lógica para o Kanban Drag-and-Drop
+document.addEventListener('DOMContentLoaded', function() {
+    // Código dos gráficos (deve estar aqui)
+    // ...
+
+    // Ativa o Drag-and-Drop apenas na página do Kanban
+    const kanbanContainer = document.querySelector('.kanban-container');
+    if (kanbanContainer) {
+        const kanbanColumns = document.querySelectorAll('.kanban-column-body');
+        
+        kanbanColumns.forEach(column => {
+            new Sortable(column, {
+                group: 'kanban', // Permite mover itens entre colunas do mesmo grupo
+                animation: 150,
+                ghostClass: 'sortable-ghost', // Classe CSS para o item "fantasma"
+                dragClass: 'sortable-drag', // Classe CSS para o item sendo arrastado
+
+                // Evento chamado quando um item é solto em uma coluna (nova ou a mesma)
+                onEnd: function (evt) {
+                    const itemEl = evt.item;      // O card que foi movido
+                    const toColumn = evt.to;        // A coluna de destino
+                    const fromColumn = evt.from;    // A coluna de origem
+                    
+                    const ticketId = itemEl.dataset.ticketId;
+                    const newStatus = toColumn.dataset.status;
+                    const oldStatus = fromColumn.dataset.status;
+
+                    // Só envia a requisição se a coluna for diferente
+                    if (newStatus !== oldStatus) {
+                        console.log(`Movendo ticket ${ticketId} do status '${oldStatus}' para '${newStatus}'`);
+
+                        // Envia a atualização para o servidor
+                        fetch(`/update_ticket_status/${ticketId}`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({ new_status: newStatus })
+                        })
+                        .then(response => {
+                            if (!response.ok) {
+                                // Se a resposta não for OK (ex: 403, 404, 500), lança um erro
+                                return response.json().then(err => { throw new Error(err.message || 'Erro no servidor') });
+                            }
+                            return response.json();
+                        })
+                        .then(data => {
+                            if (data.success) {
+                                console.log('Status atualizado com sucesso!');
+                                // Opcional: exibir uma notificação de sucesso (Toast)
+                            } else {
+                                // Se a API retornar sucesso=false, reverte a ação
+                                console.error('Falha ao atualizar o status:', data.message);
+                                fromColumn.appendChild(itemEl); 
+                                alert('Erro ao atualizar o chamado: ' + data.message);
+                            }
+                        })
+                        .catch(error => {
+                            // Se ocorrer um erro de rede ou na resposta, reverte a ação
+                            console.error('Erro:', error);
+                            fromColumn.appendChild(itemEl);
+                            alert('Não foi possível atualizar o chamado. ' + error.message);
+                        });
+                    }
+                }
+            });
+        });
+    }
+});

@@ -1,0 +1,43 @@
+<div class="card shadow-sm h-100">
+    <div class="card-header d-flex justify-content-between align-items-center
+        {% if ticket.priority == 'alta' %} bg-danger text-white
+        {% elif ticket.priority == 'media' %} bg-warning text-dark
+        {% else %} bg-light border-info
+        {% endif %}">
+        <h6 class="mb-0 fw-bold">{{ ticket.title }}</h6>
+        <span class="badge 
+            {% if ticket.status == 'Aberto' %} bg-primary
+            {% elif ticket.status == 'Em Atendimento' %} bg-dark
+            {% elif ticket.status == 'Resolvido' %} bg-success
+            {% else %} bg-secondary
+            {% endif %}">
+            {{ ticket.status }}
+        </span>
+    </div>
+    <div class="card-body">
+        <p class="card-text text-muted small mb-2">
+            De: <strong>{{ ticket.origin_sector }}</strong> para <strong>{{ ticket.target_sector }}</strong>
+        </p>
+        <p class="card-text small mb-2">
+            Aberto por: <strong>{{ ticket.author.name }}</strong>
+        </p>
+        <p class="card-text small text-muted">
+            <i class="far fa-clock me-1"></i> {{ ticket.created_at.strftime('%d/%m/%Y %H:%M') }}
+        </p>
+        {% if ticket.assignee_user %}
+            <p class="card-text small mt-2">
+                <i class="fas fa-user-tie me-1"></i> Atendente: <strong>{{ ticket.assignee_user.name }}</strong>
+            </p>
+        {% endif %}
+    </div>
+    <div class="card-footer bg-white border-top-0 d-flex justify-content-between align-items-center">
+        <a href="{{ url_for('main.view_ticket', ticket_id=ticket.id) }}" class="btn btn-sm btn-outline-primary">Ver Detalhes</a>
+        {% if ticket.priority == 'alta' %}
+            <span class="badge bg-danger-subtle text-danger-emphasis rounded-pill">Alta</span>
+        {% elif ticket.priority == 'media' %}
+            <span class="badge bg-warning-subtle text-warning-emphasis rounded-pill">Média</span>
+        {% else %}
+            <span class="badge bg-info-subtle text-info-emphasis rounded-pill">Baixa</span>
+        {% endif %}
+    </div>
+</div>

@@ -9,11 +9,13 @@
                 <div class="card-header text-center bg-secondary text-white">
                     <h4 class="mb-0">{{ status }}</h4>
                 </div>
-                <div class="card-body p-2 kanban-column-body">
+                <!-- Adicionado ID e data-status para o JavaScript -->
+                <div class="card-body p-2 kanban-column-body" id="kanban-{{ status.lower().replace(' ', '-') }}" data-status="{{ status }}">
                     {% set filtered_tickets = tickets | selectattr('status', 'equalto', status) | list %}
                     {% if filtered_tickets %}
                         {% for ticket in filtered_tickets %}
-                            <div class="mb-2 kanban-card">
+                            <!-- Adicionado data-ticket-id para o JavaScript -->
+                            <div class="mb-2 kanban-card" data-ticket-id="{{ ticket.id }}">
                                 {% include 'components/ticket_card.html' %}
                             </div>
                         {% endfor %}

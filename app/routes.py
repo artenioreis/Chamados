@@ -254,3 +254,38 @@ def forbidden(error):
 def not_found(error):
     flash('A página que você está procurando não existe.', 'danger')
     return render_template('404.html', title='Página Não Encontrada'), 404
+# app/routes.py
+
+# ... (outras rotas)
+
+@main.route('/update_ticket_status/<int:ticket_id>', methods=['POST'])
+@login_required
+def update_ticket_status(ticket_id):
+    # Apenas técnicos e administradores podem mudar o status via drag-and-drop
+    if not is_tecnico():
+        return jsonify({'success': False, 'message': 'Permissão negada.'}), 403
+
+    ticket = Ticket.query.get_or_404(ticket_id)
+    data = request.get_json()
+    new_status = data.get('new_status')
+
+    if not new_status:
+        return jsonify({'success': False, 'message': 'Novo status não fornecido.'}), 400
+
+    old_status = ticket.status
+    if old_status != new_status:
+        ticket.status = new_status
+        
+        # Adiciona ao histórico
+        history_entry = TicketHistory(
+            ticket_id=ticket.id,
+            changed_by_user_id=current_user.id,
+            field_changed='status',
+            old_value=old_status,
+            new_value=new_status
+        )
+        db.session.add(history_entry)
+        db.session.commit()
+        return jsonify({'success': True, 'message': f'Status do chamado #{ticket.id} alterado para {new_status}.'})
+    
+    return jsonify({'success': False, 'message': 'O status já é o mesmo.'})

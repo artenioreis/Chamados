@@ -66,8 +66,9 @@ class TicketForm(FlaskForm):
     submit = SubmitField('Abrir Chamado')
 
 class CommentForm(FlaskForm):
-    content = TextAreaField('Comentário', validators=[DataRequired(), Length(min=5)])
-    submit = SubmitField('Adicionar Comentário')
+    content = TextAreaField('Adicionar um novo comentário', validators=[DataRequired(), Length(min=5)])
+    # ALTERADO: Nome do campo de submit é único
+    submit_comment = SubmitField('Adicionar Comentário')
 
 class TicketUpdateForm(FlaskForm):
     status = SelectField('Status', choices=[
@@ -81,5 +82,6 @@ class TicketUpdateForm(FlaskForm):
         ('media', 'Média'),
         ('alta', 'Alta')
     ], validators=[DataRequired()])
-    assigned_to = SelectField('Atribuído a', choices=[], coerce=int) # Será preenchido dinamicamente
-    submit = SubmitField('Atualizar Chamado')
+    assigned_to = SelectField('Atribuído a', choices=[], coerce=int)
+    # ALTERADO: Nome do campo de submit é único
+    submit_update = SubmitField('Atualizar Chamado')

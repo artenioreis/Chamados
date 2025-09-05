@@ -12,3 +12,40 @@
 .kanban-card {
     cursor: grab;
 }
+/* Estilos para o Kanban Drag-and-Drop */
+
+.kanban-column {
+    min-width: 300px; /* Largura mínima da coluna */
+    max-width: 320px;
+    flex-shrink: 0;
+}
+
+.kanban-card {
+    cursor: grab; /* Muda o cursor para indicar que o item é arrastável */
+}
+
+/* Estilo para o item "fantasma" (o espaço reservado onde o card pode ser solto) */
+.sortable-ghost {
+    opacity: 0.4;
+    background-color: #cce5ff; /* Um azul claro */
+    border: 2px dashed #007bff;
+}
+
+/* Estilo para o item que está sendo arrastado */
+.sortable-drag {
+    opacity: 0.9;
+    transform: rotate(3deg); /* Inclina um pouco o card ao arrastar */
+    box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+}
+
+/* Opção 1: Background com Gradiente Suave */
+body {
+    background: linear-gradient(to bottom right, #9cc4eb, #e9ecef);
+    background-attachment: fixed; /* Mantém o gradiente fixo durante o scroll */
+}
+
+/* Deixa os cards com um leve destaque */
+.card {
+    border: none;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+}
