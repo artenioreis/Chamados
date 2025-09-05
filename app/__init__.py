@@ -1,35 +1,38 @@
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
-from werkzeug.security import generate_password_hash # Importe generate_password_hash aqui
+from werkzeug.security import generate_password_hash
 import os
 from dotenv import load_dotenv
 
-load_dotenv() # Carrega variáveis de ambiente do arquivo .env
+load_dotenv()
 
 db = SQLAlchemy()
 login_manager = LoginManager()
-login_manager.login_view = 'main.login' # Define a rota de login, usando o nome do blueprint
+
+# --- LINHA ADICIONADA AQUI ---
+login_manager.login_message = "Por favor, faça o login para acessar esta página."
+login_manager.login_message_category = "info" # Opcional: define a cor do alerta (Bootstrap)
+
+login_manager.login_view = 'main.login'
 
 def create_app():
     app = Flask(__name__)
-    app.config.from_object('config.Config') # Carrega configurações
+    app.config.from_object('config.Config')
 
     db.init_app(app)
     login_manager.init_app(app)
 
     with app.app_context():
-        from app import models, forms # Importa modelos e formulários
+        from app import models, forms
         
-        # Importa e registra o Blueprint de rotas
         from app.routes import main as main_blueprint
         app.register_blueprint(main_blueprint)
         
-        db.create_all() # Cria as tabelas no banco de dados
+        db.create_all()
 
-        # Cria um usuário administrador padrão se não existir
         if not models.User.query.filter_by(email='admin@empresa.com').first():
-            hashed_password = generate_password_hash('admin123', method='pbkdf2:sha256') # Corrigido para 'pbkdf2:sha256'
+            hashed_password = generate_password_hash('admin123', method='pbkdf2:sha256')
             admin_user = models.User(
                 name='Administrador',
                 email='admin@empresa.com',

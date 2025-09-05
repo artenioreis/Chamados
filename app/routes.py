@@ -1,9 +1,9 @@
 from flask import render_template, url_for, flash, redirect, request, abort, jsonify, Blueprint
-from app import db # Importa 'db' da instância global de app
+from app import db
 from app.forms import LoginForm, RegistrationForm, TicketForm, CommentForm, TicketUpdateForm
 from app.models import User, Ticket, Comment, TicketHistory
 from flask_login import login_user, current_user, logout_user, login_required
-from werkzeug.security import generate_password_hash, check_password_hash # Importe generate_password_hash e check_password_hash aqui
+from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy import func, or_
 import json
 
@@ -24,10 +24,10 @@ def home():
     if current_user.access_level == 'administrador':
         tickets = Ticket.query.order_by(Ticket.created_at.desc()).all()
     elif current_user.access_level == 'tecnico':
-        # Técnicos veem chamados do seu setor e os que estão atribuídos a eles
         tickets = Ticket.query.filter(
             or_(
                 Ticket.target_sector == current_user.sector,
+                Ticket.origin_sector == current_user.sector,
                 Ticket.assigned_to == current_user.id
             )
         ).order_by(Ticket.created_at.desc()).all()
@@ -39,7 +39,7 @@ def home():
 @main.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
-        return redirect(url_for('main.home')) # Referência a rota usando blueprint.route_name
+        return redirect(url_for('main.home'))
     form = LoginForm()
     if form.validate_on_submit():
         user = User.query.filter_by(email=form.email.data).first()
@@ -63,11 +63,10 @@ def logout():
 @login_required
 def register():
     if not is_admin():
-        abort(403) # Somente administradores podem registrar usuários
-
+        abort(403)
     form = RegistrationForm()
     if form.validate_on_submit():
-        hashed_password = generate_password_hash(form.password.data, method='pbkdf2:sha256') # Corrigido para 'pbkdf2:sha256'
+        hashed_password = generate_password_hash(form.password.data, method='pbkdf2:sha256')
         user = User(
             name=form.name.data,
             email=form.email.data,
@@ -78,7 +77,7 @@ def register():
         db.session.add(user)
         db.session.commit()
         flash(f'Conta criada para {form.name.data}! O usuário pode fazer login agora.', 'success')
-        return redirect(url_for('main.register')) # Redireciona para o cadastro para cadastrar mais
+        return redirect(url_for('main.register'))
     return render_template('register.html', title='Cadastrar Usuário', form=form)
 
 @main.route('/create_ticket', methods=['GET', 'POST'])
@@ -97,7 +96,6 @@ def create_ticket():
         db.session.add(ticket)
         db.session.commit()
         
-        # Adiciona histórico de criação do chamado
         history_entry = TicketHistory(
             ticket_id=ticket.id,
             changed_by_user_id=current_user.id,
@@ -110,7 +108,6 @@ def create_ticket():
         
         flash('Seu chamado foi aberto com sucesso!', 'success')
         return redirect(url_for('main.tickets_kanban'))
-    # Preenche o setor de origem com o setor do usuário logado
     form.origin_sector.data = current_user.sector
     return render_template('create_ticket.html', title='Abrir Chamado', form=form)
 
@@ -119,76 +116,65 @@ def create_ticket():
 def view_ticket(ticket_id):
     ticket = Ticket.query.get_or_404(ticket_id)
 
-    # Verifica permissão para ver o chamado
     if ticket.user_id != current_user.id and \
        not (is_tecnico() and (ticket.target_sector == current_user.sector or ticket.origin_sector == current_user.sector or is_admin())):
-        abort(403) # Usuário não tem permissão para ver este chamado
+        abort(403)
 
     comment_form = CommentForm()
     update_form = TicketUpdateForm()
 
-    # Preencher o campo assigned_to no formulário de atualização
-    tecnicos = User.query.filter(or_(User.access_level == 'tecnico', User.access_level == 'administrador')).filter_by(sector=ticket.target_sector).all()
-    # Adicionar uma opção "Não Atribuído" (id=0) para a seleção
-    update_form.assigned_to.choices = [(0, 'Não Atribuído')] + [(t.id, t.name) for t in tecnicos]
+    # Sempre preenche as 'choices' do campo 'assigned_to' se o usuário for técnico
+    if is_tecnico():
+        tecnicos = User.query.filter(or_(User.access_level == 'tecnico', User.access_level == 'administrador')).filter_by(sector=ticket.target_sector).all()
+        update_form.assigned_to.choices = [(0, 'Não Atribuído')] + [(t.id, t.name) for t in tecnicos]
 
-    if request.method == 'GET':
+    # Processa os formulários se a requisição for POST
+    if request.method == 'POST':
+        # Tenta processar o formulário de ATUALIZAÇÃO
+        if update_form.submit_update.data and update_form.validate():
+            if not is_tecnico():
+                abort(403)
+            
+            changes = []
+            if update_form.status.data != ticket.status:
+                changes.append(('status', ticket.status, update_form.status.data))
+                ticket.status = update_form.status.data
+            if update_form.priority.data != ticket.priority:
+                changes.append(('priority', ticket.priority, update_form.priority.data))
+                ticket.priority = update_form.priority.data
+            new_assigned_to = update_form.assigned_to.data if update_form.assigned_to.data != 0 else None
+            if new_assigned_to != ticket.assigned_to:
+                old_assignee = User.query.get(ticket.assigned_to)
+                new_assignee = User.query.get(new_assigned_to)
+                old_assignee_name = old_assignee.name if old_assignee else 'N/A'
+                new_assignee_name = new_assignee.name if new_assignee else 'N/A'
+                changes.append(('assigned_to', old_assignee_name, new_assignee_name))
+                ticket.assigned_to = new_assigned_to
+            for field, old_val, new_val in changes:
+                history_entry = TicketHistory(ticket_id=ticket.id, changed_by_user_id=current_user.id, field_changed=field, old_value=old_val, new_value=new_val)
+                db.session.add(history_entry)
+
+            db.session.commit()
+            flash('Chamado atualizado com sucesso!', 'success')
+            return redirect(url_for('main.view_ticket', ticket_id=ticket.id))
+
+        # Tenta processar o formulário de COMENTÁRIO
+        if comment_form.submit_comment.data and comment_form.validate():
+            comment = Comment(
+                content=comment_form.content.data,
+                user_id=current_user.id,
+                ticket_id=ticket.id
+            )
+            db.session.add(comment)
+            db.session.commit()
+            flash('Comentário adicionado!', 'success')
+            return redirect(url_for('main.view_ticket', ticket_id=ticket.id))
+
+    # Preenche os valores iniciais do formulário de atualização na requisição GET
+    if request.method == 'GET' and is_tecnico():
         update_form.status.data = ticket.status
         update_form.priority.data = ticket.priority
-        update_form.assigned_to.data = ticket.assigned_to if ticket.assigned_to else 0 # Define como 0 se não atribuído
-    
-    # Processar atualização do chamado
-    if update_form.validate_on_submit() and 'update_ticket_submit' in request.form:
-        # Apenas técnicos e administradores podem atualizar
-        if not is_tecnico():
-            abort(403)
-
-        # Registrar histórico de mudanças
-        changes = []
-        if update_form.status.data != ticket.status:
-            changes.append(('status', ticket.status, update_form.status.data))
-            ticket.status = update_form.status.data
-        
-        if update_form.priority.data != ticket.priority:
-            changes.append(('priority', ticket.priority, update_form.priority.data))
-            ticket.priority = update_form.priority.data
-        
-        new_assigned_to = update_form.assigned_to.data if update_form.assigned_to.data != 0 else None
-        if new_assigned_to != ticket.assigned_to:
-            old_assignee = User.query.get(ticket.assigned_to)
-            new_assignee = User.query.get(new_assigned_to)
-
-            old_assignee_name = old_assignee.name if old_assignee else 'N/A'
-            new_assignee_name = new_assignee.name if new_assignee else 'N/A'
-            
-            changes.append(('assigned_to', old_assignee_name, new_assignee_name))
-            ticket.assigned_to = new_assigned_to
-
-        for field, old_val, new_val in changes:
-            history_entry = TicketHistory(
-                ticket_id=ticket.id,
-                changed_by_user_id=current_user.id,
-                field_changed=field,
-                old_value=old_val,
-                new_value=new_val
-            )
-            db.session.add(history_entry)
-        
-        db.session.commit()
-        flash('Chamado atualizado com sucesso!', 'success')
-        return redirect(url_for('main.view_ticket', ticket_id=ticket.id))
-
-    # Processar novo comentário
-    if comment_form.validate_on_submit() and 'add_comment_submit' in request.form:
-        comment = Comment(
-            content=comment_form.content.data,
-            user_id=current_user.id,
-            ticket_id=ticket.id
-        )
-        db.session.add(comment)
-        db.session.commit()
-        flash('Comentário adicionado!', 'success')
-        return redirect(url_for('main.view_ticket', ticket_id=ticket.id))
+        update_form.assigned_to.data = ticket.assigned_to if ticket.assigned_to else 0
 
     return render_template('view_ticket.html', 
                            title=ticket.title, 
@@ -204,10 +190,10 @@ def tickets_kanban():
     if current_user.access_level == 'administrador':
         tickets = Ticket.query.order_by(Ticket.priority.desc(), Ticket.created_at.asc()).all()
     elif current_user.access_level == 'tecnico':
-        # Técnicos veem chamados do seu setor e os que estão atribuídos a eles
         tickets = Ticket.query.filter(
             or_(
                 Ticket.target_sector == current_user.sector,
+                Ticket.origin_sector == current_user.sector,
                 Ticket.assigned_to == current_user.id
             )
         ).order_by(Ticket.priority.desc(), Ticket.created_at.asc()).all()
@@ -217,51 +203,9 @@ def tickets_kanban():
     return render_template('tickets_kanban.html', title='Kanban de Chamados', tickets=tickets)
 
 
-@main.route('/dashboard')
-@login_required
-def dashboard():
-    if not is_tecnico():
-        abort(403) # Apenas técnicos e administradores podem ver o dashboard
-
-    # Chamados por status
-    status_counts = db.session.query(Ticket.status, func.count(Ticket.id)).group_by(Ticket.status).all()
-    status_data = [{'status': s, 'count': c} for s, c in status_counts]
-
-    # Chamados por setor de destino
-    sector_counts = db.session.query(Ticket.target_sector, func.count(Ticket.id)).group_by(Ticket.target_sector).all()
-    sector_data = [{'sector': s, 'count': c} for s, c in sector_counts]
-
-    # Chamados por prioridade
-    priority_counts = db.session.query(Ticket.priority, func.count(Ticket.id)).group_by(Ticket.priority).all()
-    priority_data = [{'priority': p, 'count': c} for p, c in priority_counts]
-    
-    # Total de chamados
-    total_tickets = Ticket.query.count()
-
-    return render_template('dashboard.html', 
-                           title='Dashboard',
-                           status_data=json.dumps(status_data),
-                           sector_data=json.dumps(sector_data),
-                           priority_data=json.dumps(priority_data),
-                           total_tickets=total_tickets)
-
-@main.errorhandler(403)
-def forbidden(error):
-    flash('Você não tem permissão para acessar esta página.', 'danger')
-    return render_template('403.html', title='Acesso Negado'), 403
-
-@main.errorhandler(404)
-def not_found(error):
-    flash('A página que você está procurando não existe.', 'danger')
-    return render_template('404.html', title='Página Não Encontrada'), 404
-# app/routes.py
-
-# ... (outras rotas)
-
 @main.route('/update_ticket_status/<int:ticket_id>', methods=['POST'])
 @login_required
 def update_ticket_status(ticket_id):
-    # Apenas técnicos e administradores podem mudar o status via drag-and-drop
     if not is_tecnico():
         return jsonify({'success': False, 'message': 'Permissão negada.'}), 403
 
@@ -274,18 +218,63 @@ def update_ticket_status(ticket_id):
 
     old_status = ticket.status
     if old_status != new_status:
-        ticket.status = new_status
-        
-        # Adiciona ao histórico
-        history_entry = TicketHistory(
-            ticket_id=ticket.id,
-            changed_by_user_id=current_user.id,
-            field_changed='status',
-            old_value=old_status,
-            new_value=new_status
-        )
-        db.session.add(history_entry)
-        db.session.commit()
-        return jsonify({'success': True, 'message': f'Status do chamado #{ticket.id} alterado para {new_status}.'})
+        try:
+            ticket.status = new_status
+            history_entry = TicketHistory(
+                ticket_id=ticket.id,
+                changed_by_user_id=current_user.id,
+                field_changed='status',
+                old_value=old_status,
+                new_value=new_status
+            )
+            db.session.add(history_entry)
+            db.session.commit()
+            return jsonify({'success': True, 'message': f'Status do chamado #{ticket.id} alterado para {new_status}.'})
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'success': False, 'message': 'Erro ao salvar no banco de dados.'}), 500
     
     return jsonify({'success': False, 'message': 'O status já é o mesmo.'})
+
+
+@main.route('/dashboard')
+@login_required
+def dashboard():
+    if not is_tecnico():
+        abort(403)
+
+    status_counts = db.session.query(Ticket.status, func.count(Ticket.id)).group_by(Ticket.status).all()
+    status_data = [{'status': s, 'count': c} for s, c in status_counts]
+
+    sector_counts = db.session.query(Ticket.target_sector, func.count(Ticket.id)).group_by(Ticket.target_sector).all()
+    sector_data = [{'sector': s, 'count': c} for s, c in sector_counts]
+
+    priority_counts = db.session.query(Ticket.priority, func.count(Ticket.id)).group_by(Ticket.priority).all()
+    priority_data = [{'priority': p, 'count': c} for p, c in priority_counts]
+    
+    total_tickets = Ticket.query.count()
+
+    return render_template('dashboard.html', 
+                           title='Dashboard',
+                           status_data=json.dumps(status_data),
+                           sector_data=json.dumps(sector_data),
+                           priority_data=json.dumps(priority_data),
+                           total_tickets=total_tickets)
+
+@main.route('/errorhandler/403')
+def forbidden_page():
+    return render_template('403.html', title='Acesso Negado'), 403
+
+@main.route('/errorhandler/404')
+def not_found_page():
+    return render_template('404.html', title='Página Não Encontrada'), 404
+
+@main.errorhandler(403)
+def forbidden(error):
+    flash('Você não tem permissão para acessar esta página.', 'danger')
+    return render_template('403.html', title='Acesso Negado'), 403
+
+@main.errorhandler(404)
+def not_found(error):
+    flash('A página que você está procurando não existe.', 'danger')
+    return render_template('404.html', title='Página Não Encontrada'), 404

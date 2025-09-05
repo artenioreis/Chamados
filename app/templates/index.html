@@ -1,7 +1,13 @@
 {% extends "base.html" %}
 {% block content %}
-    <h1 class="mb-4">Seus Chamados Recentes</h1>
-
+    
+    <div class="row justify-content-start mt-4">
+    <div class="col-12 text-start mb-3">
+        <!-- Logo carregada de URL externa -->
+        <img src="https://neosul.com.br/clientes/1/img/logo.png" alt="Logo Neosul" style="max-width: 250px; height: auto;">
+    </div>
+</div>
+<h1 class="mb-4">Seus Chamados Recentes</h1>
     {% if tickets %}
         <div class="row">
             {% for ticket in tickets %}

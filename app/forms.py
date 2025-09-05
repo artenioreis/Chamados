@@ -85,3 +85,17 @@ class TicketUpdateForm(FlaskForm):
     assigned_to = SelectField('Atribuído a', choices=[], coerce=int)
     # ALTERADO: Nome do campo de submit é único
     submit_update = SubmitField('Atualizar Chamado')
+    
+    
+    
+class CommentForm(FlaskForm):
+    content = TextAreaField('Adicionar um novo comentário', validators=[DataRequired(), Length(min=5)])
+    # Nome único para o botão
+    submit_comment = SubmitField('Adicionar Comentário')
+
+class TicketUpdateForm(FlaskForm):
+    status = SelectField('Status', choices=[...], validators=[DataRequired()])
+    priority = SelectField('Prioridade', choices=[...], validators=[DataRequired()])
+    assigned_to = SelectField('Atribuído a', choices=[], coerce=int)
+    # Nome único para o botão
+    submit_update = SubmitField('Atualizar Chamado')
