@@ -4,7 +4,12 @@
         {% elif ticket.priority == 'media' %} bg-warning text-dark
         {% else %} bg-light border-info
         {% endif %}">
-        <h6 class="mb-0 fw-bold">{{ ticket.title }}</h6>
+        
+        <!-- ALTERAÇÃO AQUI: Adicionado o ID do chamado -->
+        <h6 class="mb-0 fw-bold">
+            <span class="text-muted">#{{ ticket.id }}</span> {{ ticket.title }}
+        </h6>
+
         <span class="badge 
             {% if ticket.status == 'Aberto' %} bg-primary
             {% elif ticket.status == 'Em Atendimento' %} bg-dark

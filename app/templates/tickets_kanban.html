@@ -1,12 +1,21 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="row justify-content-start mt-4">
-    <div class="col-12 text-start mb-3">
-        <!-- Logo carregada de URL externa -->
-        <img src="https://neosul.com.br/clientes/1/img/logo.png" alt="Logo Neosul" style="max-width: 250px; height: auto;">
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+        <h1><i class="fas fa-columns me-2"></i>Kanban de Chamados</h1>
+        
+        <!-- Formulário de Busca -->
+        <form method="GET" action="{{ url_for('main.tickets_kanban') }}" class="d-flex" style="min-width: 300px;">
+            <input class="form-control me-2" type="search" name="q" placeholder="Buscar por título ou ID..." value="{{ request.args.get('q', '') }}" aria-label="Buscar">
+            <button class="btn btn-outline-primary" type="submit">Buscar</button>
+        </form>
     </div>
-</div>
-    <h1 class="mb-4"><i class="fas fa-columns me-2"></i>Kanban de Chamados</h1>
+
+    {% if not tickets and request.args.get('q') %}
+        <div class="alert alert-info mt-4" role="alert">
+            <h4 class="alert-heading">Nenhum resultado encontrado para "{{ request.args.get('q') }}"</h4>
+            <p>Tente refinar sua busca. Para ver todos os chamados, <a href="{{ url_for('main.tickets_kanban') }}" class="alert-link">limpe a busca</a>.</p>
+        </div>
+    {% endif %}
 
     <div class="d-flex flex-row overflow-auto pb-3 kanban-container">
         {% set statuses = ['Aberto', 'Em Atendimento', 'Resolvido', 'Fechado'] %}
@@ -15,24 +24,20 @@
                 <div class="card-header text-center bg-secondary text-white">
                     <h4 class="mb-0">{{ status }}</h4>
                 </div>
-                <!-- Atributos para o JavaScript de Drag-and-Drop -->
                 <div class="card-body p-2 kanban-column-body" id="kanban-{{ status.lower().replace(' ', '-') }}" data-status="{{ status }}">
-                    
-                    <!-- Filtra os tickets para esta coluna específica -->
                     {% set filtered_tickets = tickets | selectattr('status', 'equalto', status) | list %}
-                    
                     {% if filtered_tickets %}
-                        <!-- Loop CORRETO: itera sobre a lista de tickets filtrados -->
                         {% for ticket in filtered_tickets %}
                             <div class="mb-2 kanban-card" data-ticket-id="{{ ticket.id }}">
-                                <!-- Inclui o componente do card para exibir o ticket -->
                                 {% include 'components/ticket_card.html' %}
                             </div>
                         {% endfor %}
                     {% else %}
-                        <div class="alert alert-secondary text-center small mt-3" role="alert">
-                            Nenhum chamado neste status.
-                        </div>
+                        {% if not request.args.get('q') %}
+                            <div class="alert alert-secondary text-center small mt-3" role="alert">
+                                Nenhum chamado neste status.
+                            </div>
+                        {% endif %}
                     {% endif %}
                 </div>
             </div>

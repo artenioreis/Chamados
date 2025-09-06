@@ -48,7 +48,7 @@
                             </div>
                             <div class="flex-grow-1">
                                 <strong>{{ comment.comment_author.name }}</strong> <small class="text-muted ms-2">{{ comment.created_at.strftime('%d/%m/%Y %H:%M') }}</small>
-                                <p>{{ comment.content }}</p>
+                                <p class="mb-0" style="white-space: pre-wrap;">{{ comment.content }}</p>
                             </div>
                         </div>
                         {% if not loop.last %}<hr>{% endif %}
@@ -63,7 +63,6 @@
                             {{ comment_form.content.label(class="form-label") }}
                             {{ comment_form.content(class="form-control", rows=3) }}
                         </div>
-                        <!-- ALTERADO: Usa o novo nome do campo, sem passar 'name' -->
                         {{ comment_form.submit_comment(class="btn btn-primary") }}
                     </form>
                 </div>
@@ -92,7 +91,6 @@
                             {{ update_form.assigned_to(class="form-select") }}
                         </div>
                         <div class="d-grid">
-                            <!-- ALTERADO: Usa o novo nome do campo, sem passar 'name' -->
                             {{ update_form.submit_update(class="btn btn-info text-white") }}
                         </div>
                     </form>

@@ -7,5 +7,8 @@ app = create_app()
 def make_shell_context():
     return {'db': db, 'User': User, 'Ticket': Ticket}
 
-if __name__ == '__main__':
-    app.run(debug=True)
+#if __name__ == '__main__':
+    #app.run(debug=True)
+    
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000, debug=True)
