@@ -1,13 +1,37 @@
-from flask import render_template, url_for, flash, redirect, request, abort, jsonify, Blueprint
+import os
+import uuid
+from werkzeug.utils import secure_filename
+from flask import render_template, url_for, flash, redirect, request, abort, jsonify, Blueprint, current_app
 from app import db
-from app.forms import LoginForm, RegistrationForm, TicketForm, CommentForm, TicketUpdateForm
+from app.forms import LoginForm, RegistrationForm, TicketForm, CommentForm, TicketUpdateForm, ChangePasswordForm
 from app.models import User, Ticket, Comment, TicketHistory
 from flask_login import login_user, current_user, logout_user, login_required
 from werkzeug.security import generate_password_hash, check_password_hash
-from sqlalchemy import func, or_, cast, String  # GARANTA QUE 'cast' E 'String' ESTÃO AQUI
+from sqlalchemy import func, or_, cast, String
 import json
+from datetime import datetime, timedelta
 
 main = Blueprint('main', __name__)
+
+# --- FUNÇÃO AUXILIAR PARA SALVAR ANEXOS ---
+def save_attachment(form_attachment):
+    """Salva o anexo com um nome seguro e único e retorna o nome do arquivo."""
+    if not form_attachment or not form_attachment.filename:
+        return None
+        
+    # Gera um nome de arquivo aleatório e seguro
+    random_hex = uuid.uuid4().hex
+    _, f_ext = os.path.splitext(form_attachment.filename)
+    secure_name = secure_filename(f"{random_hex}{f_ext}")
+    
+    # Garante que a pasta de uploads exista
+    upload_path = current_app.config['UPLOAD_FOLDER']
+    os.makedirs(upload_path, exist_ok=True)
+    
+    file_path = os.path.join(upload_path, secure_name)
+    form_attachment.save(file_path)
+    
+    return secure_name
 
 def is_admin():
     return current_user.is_authenticated and current_user.access_level == 'administrador'
@@ -15,33 +39,22 @@ def is_admin():
 def is_tecnico():
     return current_user.is_authenticated and (current_user.access_level == 'tecnico' or current_user.access_level == 'administrador')
 
+# ... (outras rotas como home, login, etc., sem alterações) ...
 @main.route('/')
 @main.route('/home')
 @login_required
 def home():
     query_param = request.args.get('q', '', type=str)
-
     if current_user.access_level == 'administrador':
         base_query = Ticket.query
     elif current_user.access_level == 'tecnico':
-        base_query = Ticket.query.filter(
-            or_(
-                Ticket.target_sector == current_user.sector,
-                Ticket.origin_sector == current_user.sector,
-                Ticket.assigned_to == current_user.id
-            )
-        )
+        base_query = Ticket.query.filter(or_(Ticket.target_sector == current_user.sector, Ticket.origin_sector == current_user.sector, Ticket.assigned_to == current_user.id))
     else:
         base_query = Ticket.query.filter_by(user_id=current_user.id)
 
     if query_param:
         search_term = f"%{query_param}%"
-        base_query = base_query.filter(
-            or_(
-                Ticket.title.ilike(search_term),
-                cast(Ticket.id, String).ilike(search_term)
-            )
-        )
+        base_query = base_query.filter(or_(Ticket.title.ilike(search_term), cast(Ticket.id, String).ilike(search_term)))
 
     tickets = base_query.order_by(Ticket.created_at.desc()).all()
     return render_template('index.html', title='Início', tickets=tickets)
@@ -54,10 +67,13 @@ def login():
     if form.validate_on_submit():
         user = User.query.filter_by(email=form.email.data).first()
         if user and check_password_hash(user.password, form.password.data):
-            login_user(user)
-            next_page = request.args.get('next')
-            flash(f'Bem-vindo, {user.name}!', 'success')
-            return redirect(next_page) if next_page else redirect(url_for('main.home'))
+            if user.is_active:
+                login_user(user)
+                next_page = request.args.get('next')
+                flash(f'Bem-vindo, {user.name}!', 'success')
+                return redirect(next_page) if next_page else redirect(url_for('main.home'))
+            else:
+                flash('Sua conta está bloqueada. Por favor, contate o administrador.', 'danger')
         else:
             flash('Login sem sucesso. Por favor, verifique seu e-mail e senha.', 'danger')
     return render_template('login.html', title='Login', form=form)
@@ -84,12 +100,26 @@ def register():
         return redirect(url_for('main.register'))
     return render_template('register.html', title='Cadastrar Usuário', form=form)
 
+# --- ROTA create_ticket MODIFICADA ---
 @main.route('/create_ticket', methods=['GET', 'POST'])
 @login_required
 def create_ticket():
     form = TicketForm()
     if form.validate_on_submit():
-        ticket = Ticket(title=form.title.data, description=form.description.data, user_id=current_user.id, origin_sector=form.origin_sector.data, target_sector=form.target_sector.data, priority=form.priority.data)
+        # Lógica para salvar o anexo, se houver
+        attachment_filename = None
+        if form.attachment.data:
+            attachment_filename = save_attachment(form.attachment.data)
+
+        ticket = Ticket(
+            title=form.title.data,
+            description=form.description.data,
+            user_id=current_user.id,
+            origin_sector=form.origin_sector.data,
+            target_sector=form.target_sector.data,
+            priority=form.priority.data,
+            attachment_filename=attachment_filename  # Salva o nome do arquivo no banco
+        )
         db.session.add(ticket)
         db.session.commit()
         
@@ -99,29 +129,31 @@ def create_ticket():
         
         flash('Seu chamado foi aberto com sucesso!', 'success')
         return redirect(url_for('main.tickets_kanban'))
+    
     form.origin_sector.data = current_user.sector
     return render_template('create_ticket.html', title='Abrir Chamado', form=form)
 
+# ... (todas as outras rotas como view_ticket, kanban, dashboard, reports, user_management, etc., sem alterações)
 @main.route('/ticket/<int:ticket_id>', methods=['GET', 'POST'])
 @login_required
 def view_ticket(ticket_id):
     ticket = Ticket.query.get_or_404(ticket_id)
-
     if ticket.user_id != current_user.id and not (is_tecnico() and (ticket.target_sector == current_user.sector or ticket.origin_sector == current_user.sector or is_admin())):
         abort(403)
 
     comment_form = CommentForm()
     update_form = TicketUpdateForm()
-
     if is_tecnico():
         tecnicos = User.query.filter(or_(User.access_level == 'tecnico', User.access_level == 'administrador')).all()
         update_form.assigned_to.choices = [(0, 'Não Atribuído')] + [(t.id, f"{t.name} ({t.sector})") for t in tecnicos]
 
     if request.method == 'POST':
         if update_form.submit_update.data and update_form.validate():
-            if not is_tecnico():
-                abort(403)
-            
+            new_status = update_form.status.data
+            if new_status == 'Fechado' and ticket.status != 'Fechado':
+                ticket.closed_at = datetime.utcnow()
+            elif new_status != 'Fechado' and ticket.status == 'Fechado':
+                ticket.closed_at = None
             changes = []
             if update_form.status.data != ticket.status:
                 changes.append(('status', ticket.status, update_form.status.data))
@@ -131,71 +163,54 @@ def view_ticket(ticket_id):
                 ticket.priority = update_form.priority.data
             new_assigned_to = update_form.assigned_to.data if update_form.assigned_to.data != 0 else None
             if new_assigned_to != ticket.assigned_to:
-                old_assignee = User.query.get(ticket.assigned_to)
-                new_assignee = User.query.get(new_assigned_to)
-                old_assignee_name = old_assignee.name if old_assignee else 'N/A'
-                new_assignee_name = new_assignee.name if new_assignee else 'N/A'
+                old_assignee, new_assignee = User.query.get(ticket.assigned_to), User.query.get(new_assigned_to)
+                old_assignee_name, new_assignee_name = (old_assignee.name if old_assignee else 'N/A'), (new_assignee.name if new_assignee else 'N/A')
                 changes.append(('assigned_to', old_assignee_name, new_assignee_name))
                 ticket.assigned_to = new_assigned_to
             for field, old_val, new_val in changes:
                 history_entry = TicketHistory(ticket_id=ticket.id, changed_by_user_id=current_user.id, field_changed=field, old_value=old_val, new_value=new_val)
                 db.session.add(history_entry)
-
             db.session.commit()
             flash('Chamado atualizado com sucesso!', 'success')
             return redirect(url_for('main.view_ticket', ticket_id=ticket.id))
-
         if comment_form.submit_comment.data and comment_form.validate():
             comment = Comment(content=comment_form.content.data, user_id=current_user.id, ticket_id=ticket.id)
             db.session.add(comment)
             db.session.commit()
             flash('Comentário adicionado!', 'success')
             return redirect(url_for('main.view_ticket', ticket_id=ticket.id))
-
     if request.method == 'GET' and is_tecnico():
-        update_form.status.data = ticket.status
-        update_form.priority.data = ticket.priority
-        update_form.assigned_to.data = ticket.assigned_to if ticket.assigned_to else 0
-
+        update_form.status.data, update_form.priority.data, update_form.assigned_to.data = ticket.status, ticket.priority, (ticket.assigned_to if ticket.assigned_to else 0)
     return render_template('view_ticket.html', title=ticket.title, ticket=ticket, comment_form=comment_form, update_form=update_form, is_tecnico=is_tecnico(), is_admin=is_admin())
 
 @main.route('/tickets_kanban')
 @login_required
 def tickets_kanban():
     query_param = request.args.get('q', '', type=str)
-
     if current_user.access_level == 'administrador':
         base_query = Ticket.query
     elif current_user.access_level == 'tecnico':
         base_query = Ticket.query.filter(or_(Ticket.target_sector == current_user.sector, Ticket.origin_sector == current_user.sector, Ticket.assigned_to == current_user.id))
     else:
         base_query = Ticket.query.filter_by(user_id=current_user.id)
-
     if query_param:
         search_term = f"%{query_param}%"
-        base_query = base_query.filter(
-            or_(
-                Ticket.title.ilike(search_term),
-                cast(Ticket.id, String).ilike(search_term)
-            )
-        )
-    
+        base_query = base_query.filter(or_(Ticket.title.ilike(search_term), cast(Ticket.id, String).ilike(search_term)))
     tickets = base_query.order_by(Ticket.priority.desc(), Ticket.created_at.asc()).all()
     return render_template('tickets_kanban.html', title='Kanban de Chamados', tickets=tickets)
 
 @main.route('/update_ticket_status/<int:ticket_id>', methods=['POST'])
 @login_required
 def update_ticket_status(ticket_id):
-    if not is_tecnico():
-        return jsonify({'success': False, 'message': 'Permissão negada.'}), 403
-    ticket = Ticket.query.get_or_404(ticket_id)
-    data = request.get_json()
+    if not is_tecnico(): return jsonify({'success': False, 'message': 'Permissão negada.'}), 403
+    ticket, data = Ticket.query.get_or_404(ticket_id), request.get_json()
     new_status = data.get('new_status')
-    if not new_status:
-        return jsonify({'success': False, 'message': 'Novo status não fornecido.'}), 400
+    if not new_status: return jsonify({'success': False, 'message': 'Novo status não fornecido.'}), 400
     old_status = ticket.status
     if old_status != new_status:
         try:
+            if new_status == 'Fechado': ticket.closed_at = datetime.utcnow()
+            else: ticket.closed_at = None
             ticket.status = new_status
             history_entry = TicketHistory(ticket_id=ticket.id, changed_by_user_id=current_user.id, field_changed='status', old_value=old_status, new_value=new_status)
             db.session.add(history_entry)
@@ -209,8 +224,7 @@ def update_ticket_status(ticket_id):
 @main.route('/dashboard')
 @login_required
 def dashboard():
-    if not is_tecnico():
-        abort(403)
+    if not is_tecnico(): abort(403)
     status_counts = db.session.query(Ticket.status, func.count(Ticket.id)).group_by(Ticket.status).all()
     status_data = [{'status': s, 'count': c} for s, c in status_counts]
     sector_counts = db.session.query(Ticket.target_sector, func.count(Ticket.id)).group_by(Ticket.target_sector).all()
@@ -219,6 +233,77 @@ def dashboard():
     priority_data = [{'priority': p, 'count': c} for p, c in priority_counts]
     total_tickets = Ticket.query.count()
     return render_template('dashboard.html', title='Dashboard', status_data=json.dumps(status_data), sector_data=json.dumps(sector_data), priority_data=json.dumps(priority_data), total_tickets=total_tickets)
+
+@main.route('/reports')
+@login_required
+def reports():
+    if not is_tecnico(): abort(403)
+    def format_timedelta(td):
+        if td is None: return "N/A"
+        total_seconds = int(td.total_seconds())
+        days, remainder = divmod(total_seconds, 86400)
+        hours, remainder = divmod(remainder, 3600)
+        minutes, _ = divmod(remainder, 60)
+        parts = []
+        if days > 0: parts.append(f"{days}d")
+        if hours > 0: parts.append(f"{hours}h")
+        if minutes > 0: parts.append(f"{minutes}m")
+        return " ".join(parts) if parts else "< 1m"
+    tickets_per_user = db.session.query(User.name, func.count(Ticket.id).label('ticket_count')).join(Ticket, User.id == Ticket.user_id).group_by(User.name).order_by(func.count(Ticket.id).desc()).all()
+    closed_tickets = Ticket.query.filter(Ticket.status == 'Fechado', Ticket.closed_at.isnot(None)).all()
+    average_closing_time, closing_time_details = None, []
+    if closed_tickets:
+        total_seconds = sum([(t.closed_at - t.created_at).total_seconds() for t in closed_tickets])
+        average_seconds = total_seconds / len(closed_tickets)
+        average_closing_time_td = timedelta(seconds=average_seconds)
+        average_closing_time = format_timedelta(average_closing_time_td)
+        for ticket in closed_tickets:
+            duration = ticket.closed_at - ticket.created_at
+            closing_time_details.append({'id': ticket.id, 'title': ticket.title, 'author': ticket.author.name, 'duration_str': format_timedelta(duration)})
+    return render_template('reports.html', title='Relatórios', tickets_per_user=tickets_per_user, average_closing_time=average_closing_time, closing_time_details=closing_time_details)
+
+@main.route('/users', methods=['GET', 'POST'])
+@login_required
+def user_management():
+    if not is_admin(): abort(403)
+    form = ChangePasswordForm()
+    if form.validate_on_submit():
+        user_id_to_change = request.form.get('user_id')
+        user_to_change = User.query.get_or_404(user_id_to_change)
+        hashed_password = generate_password_hash(form.password.data, method='pbkdf2:sha256')
+        user_to_change.password = hashed_password
+        db.session.commit()
+        flash(f'A senha do usuário {user_to_change.name} foi alterada com sucesso!', 'success')
+        return redirect(url_for('main.user_management'))
+    users = User.query.order_by(User.name).all()
+    return render_template('user_management.html', title='Gerenciar Usuários', users=users, form=form)
+
+@main.route('/delete_user/<int:user_id>', methods=['POST'])
+@login_required
+def delete_user(user_id):
+    if not is_admin(): abort(403)
+    user_to_delete = User.query.get_or_404(user_id)
+    if user_to_delete.id == current_user.id:
+        flash('Você não pode excluir sua própria conta.', 'danger')
+        return redirect(url_for('main.user_management'))
+    db.session.delete(user_to_delete)
+    db.session.commit()
+    flash(f'Usuário {user_to_delete.name} foi excluído com sucesso.', 'success')
+    return redirect(url_for('main.user_management'))
+
+@main.route('/toggle_user_status/<int:user_id>', methods=['POST'])
+@login_required
+def toggle_user_status(user_id):
+    if not is_admin(): abort(403)
+    user_to_toggle = User.query.get_or_404(user_id)
+    if user_to_toggle.id == current_user.id:
+        flash('Você não pode bloquear sua própria conta.', 'danger')
+        return redirect(url_for('main.user_management'))
+    user_to_toggle.is_active = not user_to_toggle.is_active
+    db.session.commit()
+    status = "ativado" if user_to_toggle.is_active else "bloqueado"
+    flash(f'O usuário {user_to_toggle.name} foi {status} com sucesso.', 'success')
+    return redirect(url_for('main.user_management'))
 
 @main.errorhandler(403)
 def forbidden(error):

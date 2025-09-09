@@ -156,3 +156,39 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+// ... (código existente dos gráficos e do kanban) ...
+
+// Lógica para Modais de Gerenciamento de Usuário
+document.addEventListener('DOMContentLoaded', function() {
+    // Modal de Alterar Senha
+    var changePasswordModal = document.getElementById('changePasswordModal');
+    if (changePasswordModal) {
+        changePasswordModal.addEventListener('show.bs.modal', function (event) {
+            var button = event.relatedTarget;
+            var userId = button.getAttribute('data-user-id');
+            var userName = button.getAttribute('data-user-name');
+
+            var modalTitle = changePasswordModal.querySelector('#userNamePassword');
+            var modalInputUserId = changePasswordModal.querySelector('#userIdPassword');
+            
+            modalTitle.textContent = userName;
+            modalInputUserId.value = userId;
+        });
+    }
+
+    // Modal de Excluir Usuário
+    var deleteUserModal = document.getElementById('deleteUserModal');
+    if (deleteUserModal) {
+        deleteUserModal.addEventListener('show.bs.modal', function (event) {
+            var button = event.relatedTarget;
+            var userId = button.getAttribute('data-user-id');
+            var userName = button.getAttribute('data-user-name');
+            
+            var modalText = deleteUserModal.querySelector('#userNameDelete');
+            var deleteForm = deleteUserModal.querySelector('#deleteUserForm');
+            
+            modalText.textContent = userName;
+            deleteForm.action = '/delete_user/' + userId;
+        });
+    }
+});

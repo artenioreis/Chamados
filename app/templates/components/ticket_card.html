@@ -27,7 +27,7 @@
             Aberto por: <strong>{{ ticket.author.name }}</strong>
         </p>
         <p class="card-text small text-muted">
-            <i class="far fa-clock me-1"></i> {{ ticket.created_at.strftime('%d/%m/%Y %H:%M') }}
+        <i class="far fa-clock me-1"></i> {{ ticket.created_at | localdatetime }}
         </p>
         {% if ticket.assignee_user %}
             <p class="card-text small mt-2">

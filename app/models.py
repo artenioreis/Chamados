@@ -8,7 +8,8 @@ class User(db.Model, UserMixin):
     email = db.Column(db.String(120), unique=True, nullable=False)
     sector = db.Column(db.String(50), nullable=False)
     password = db.Column(db.String(128), nullable=False)
-    access_level = db.Column(db.String(20), nullable=False, default='colaborador') # colaborador, tecnico, administrador
+    access_level = db.Column(db.String(20), nullable=False, default='colaborador')
+    is_active = db.Column(db.Boolean, nullable=False, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     tickets_created = db.relationship('Ticket', backref='author', lazy=True, foreign_keys='Ticket.user_id')
@@ -22,14 +23,19 @@ class Ticket(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(150), nullable=False)
     description = db.Column(db.Text, nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False) # Quem abriu o chamado
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     origin_sector = db.Column(db.String(50), nullable=False)
     target_sector = db.Column(db.String(50), nullable=False)
-    priority = db.Column(db.String(20), nullable=False, default='baixa') # baixa, media, alta
-    status = db.Column(db.String(20), nullable=False, default='Aberto') # Aberto, Em Atendimento, Resolvido, Fechado
+    priority = db.Column(db.String(20), nullable=False, default='baixa')
+    status = db.Column(db.String(20), nullable=False, default='Aberto')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    assigned_to = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True) # Quem está atendendo
+    closed_at = db.Column(db.DateTime, nullable=True, default=None)
+    
+    # Linha corrigida para estar alinhada com as outras
+    attachment_filename = db.Column(db.String(100), nullable=True)
+    
+    assigned_to = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
     
     comments = db.relationship('Comment', backref='ticket', lazy=True, cascade="all, delete-orphan")
     history = db.relationship('TicketHistory', backref='ticket', lazy=True, cascade="all, delete-orphan")
@@ -50,8 +56,8 @@ class Comment(db.Model):
 class TicketHistory(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     ticket_id = db.Column(db.Integer, db.ForeignKey('ticket.id'), nullable=False)
-    changed_by_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True) # Usuário que fez a alteração
-    field_changed = db.Column(db.String(50), nullable=False) # Ex: 'status', 'assigned_to', 'priority'
+    changed_by_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    field_changed = db.Column(db.String(50), nullable=False)
     old_value = db.Column(db.String(100), nullable=True)
     new_value = db.Column(db.String(100), nullable=True)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)

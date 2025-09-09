@@ -1,9 +1,8 @@
 from flask_wtf import FlaskForm
+from flask_wtf.file import FileField, FileAllowed
 from wtforms import StringField, PasswordField, SubmitField, TextAreaField, SelectField
 from wtforms.validators import DataRequired, Email, Length, EqualTo, ValidationError
 from app.models import User
-
-# ... (outros formulários como LoginForm, RegistrationForm, TicketForm) ...
 
 class LoginForm(FlaskForm):
     email = StringField('Email', validators=[DataRequired(), Email()])
@@ -33,43 +32,49 @@ class RegistrationForm(FlaskForm):
 class TicketForm(FlaskForm):
     title = StringField('Título', validators=[DataRequired(), Length(min=5, max=150)])
     description = TextAreaField('Descrição', validators=[DataRequired(), Length(min=10)])
+    attachment = FileField('Anexar Imagem (Print)', validators=[
+        FileAllowed(['jpg', 'png', 'jpeg', 'gif'], 'Apenas imagens são permitidas!')
+    ])
+    
+    # --- OPÇÕES DO SETOR DE ORIGEM ---
     origin_sector = SelectField('Setor de Origem', choices=[
         ('TI', 'TI'), ('Vendas', 'Vendas'), ('Faturamento', 'Faturamento'), 
         ('Contas a Pagar', 'Contas a Pagar'), ('Contas a Receber', 'Contas a Receber'), 
         ('RH', 'RH'), ('Marketing', 'Marketing'), ('Outros', 'Outros')
     ], validators=[DataRequired()])
+    
+    # --- OPÇÕES DO SETOR DE DESTINO ---
     target_sector = SelectField('Setor de Destino', choices=[
         ('TI', 'TI'), ('Vendas', 'Vendas'), ('Faturamento', 'Faturamento'), 
         ('Contas a Pagar', 'Contas a Pagar'), ('Contas a Receber', 'Contas a Receber'), 
         ('RH', 'RH'), ('Marketing', 'Marketing'), ('Outros', 'Outros')
     ], validators=[DataRequired()])
+    
+    # --- OPÇÕES DE PRIORIDADE ---
     priority = SelectField('Prioridade', choices=[
-        ('baixa', 'Baixa'), ('media', 'Média'), ('alta', 'Alta')
+        ('baixa', 'Baixa'), 
+        ('media', 'Média'), 
+        ('alta', 'Alta')
     ], validators=[DataRequired()])
+    
     submit = SubmitField('Abrir Chamado')
-
 
 class CommentForm(FlaskForm):
     content = TextAreaField('Adicionar um novo comentário', validators=[DataRequired(), Length(min=5)])
     submit_comment = SubmitField('Adicionar Comentário')
 
 class TicketUpdateForm(FlaskForm):
-    # AQUI ESTÃO AS OPÇÕES DE STATUS
     status = SelectField('Status', choices=[
-        ('Aberto', 'Aberto'),
-        ('Em Atendimento', 'Em Atendimento'),
-        ('Resolvido', 'Resolvido'),
-        ('Fechado', 'Fechado')
+        ('Aberto', 'Aberto'), ('Em Atendimento', 'Em Atendimento'),
+        ('Resolvido', 'Resolvido'), ('Fechado', 'Fechado')
     ], validators=[DataRequired()])
-    
-    # AQUI ESTÃO AS OPÇÕES DE PRIORIDADE
     priority = SelectField('Prioridade', choices=[
-        ('baixa', 'Baixa'),
-        ('media', 'Média'),
-        ('alta', 'Alta')
+        ('baixa', 'Baixa'), ('media', 'Média'), ('alta', 'Alta')
     ], validators=[DataRequired()])
-    
-    # AS OPÇÕES DE 'ATRIBUÍDO A' SÃO POPULADAS NA ROTA
     assigned_to = SelectField('Atribuído a', choices=[], coerce=int)
-    
     submit_update = SubmitField('Atualizar Chamado')
+
+class ChangePasswordForm(FlaskForm):
+    password = PasswordField('Nova Senha', validators=[DataRequired(), Length(min=6)])
+    confirm_password = PasswordField('Confirmar Nova Senha', validators=[DataRequired(), EqualTo('password', message='As senhas devem ser iguais.')])
+    submit = SubmitField('Alterar Senha')
