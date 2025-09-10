@@ -32,7 +32,6 @@ class Ticket(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     closed_at = db.Column(db.DateTime, nullable=True, default=None)
     
-    # Linha corrigida para estar alinhada com as outras
     attachment_filename = db.Column(db.String(100), nullable=True)
     
     assigned_to = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
@@ -66,3 +65,17 @@ class TicketHistory(db.Model):
 
     def __repr__(self):
         return f"TicketHistory(Ticket:{self.ticket_id}, Field:{self.field_changed}, Old:{self.old_value}, New:{self.new_value})"
+
+class Notification(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    ticket_id = db.Column(db.Integer, db.ForeignKey('ticket.id'), nullable=False)
+    message = db.Column(db.String(255), nullable=False)
+    is_read = db.Column(db.Boolean, default=False, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    user = db.relationship('User', backref='notifications')
+    ticket_link = db.relationship('Ticket', backref='related_notifications')
+
+    def __repr__(self):
+        return f"Notification('{self.message}', User: {self.user_id}, Read: {self.is_read})"

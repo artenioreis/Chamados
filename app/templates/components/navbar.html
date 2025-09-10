@@ -7,7 +7,6 @@
         <div class="collapse navbar-collapse" id="navbarNav">
             <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                 {% if current_user.is_authenticated %}
-                    <!-- Links para TODOS os usuários logados -->
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('main.home') }}">Início</a>
                     </li>
@@ -18,7 +17,6 @@
                         <a class="nav-link" href="{{ url_for('main.tickets_kanban') }}">Kanban</a>
                     </li>
 
-                    <!-- Links para Técnicos E Administradores -->
                     {% if current_user.access_level in ['tecnico', 'administrador'] %}
                         <li class="nav-item">
                             <a class="nav-link" href="{{ url_for('main.dashboard') }}">Dashboard</a>
@@ -28,7 +26,6 @@
                         </li>
                     {% endif %}
 
-                    <!-- Links APENAS para Administradores -->
                     {% if current_user.access_level == 'administrador' %}
                         <li class="nav-item">
                             <a class="nav-link" href="{{ url_for('main.register') }}">Cadastrar Usuário</a>
@@ -36,11 +33,13 @@
                         <li class="nav-item">
                             <a class="nav-link" href="{{ url_for('main.user_management') }}">Gerenciar Usuários</a>
                         </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('main.backup') }}">Backup</a>
+                        </li>
                     {% endif %}
                 {% endif %}
             </ul>
 
-            <!-- Menu do Usuário à Direita -->
             <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
                 {% if current_user.is_authenticated %}
                     <li class="nav-item dropdown">

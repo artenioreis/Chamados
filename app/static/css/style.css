@@ -49,3 +49,19 @@ body {
     border: none;
     box-shadow: 0 4px 8px rgba(0,0,0,0.05);
 }
+
+/* --- ESTILO ADICIONADO PARA O POP-UP --- */
+/* Estilos para Notificações (Toasts) */
+.toast {
+    min-width: 400px; /* Define uma largura mínima maior para o pop-up */
+    font-size: 1rem;  /* Aumenta o tamanho da fonte dentro do pop-up */
+}
+/* --- FIM DO ESTILO ADICIONADO --- */
+
+
+/* Estilos de Impressão */
+@media print {
+    .no-print, .navbar {
+        display: none !important;
+    }
+}

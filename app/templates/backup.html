@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="fas fa-database me-2"></i>Gerenciamento de Backup</h1>
+    <form action="{{ url_for('main.create_backup') }}" method="POST">
+        <button type="submit" class="btn btn-primary">
+            <i class="fas fa-plus-circle me-1"></i> Criar Novo Backup
+        </button>
+    </form>
+</div>
+
+<div class="card shadow-sm mb-4">
+    <div class="card-header">
+        <h5 class="mb-0">Backups Existentes</h5>
+    </div>
+    <div class="card-body">
+        {% if backups %}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th>Nome do Arquivo</th>
+                            <th class="text-end">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for backup_file in backups %}
+                        <tr>
+                            <td>{{ backup_file }}</td>
+                            <td class="text-end">
+                                <a href="{{ url_for('main.download_backup', filename=backup_file) }}" class="btn btn-sm btn-outline-success">
+                                    <i class="fas fa-download"></i> Baixar
+                                </a>
+                                <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteBackupModal" data-backup-filename="{{ backup_file }}">
+                                    <i class="fas fa-trash"></i> Excluir
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="alert alert-info" role="alert">
+                Nenhum backup encontrado. Clique em "Criar Novo Backup" para começar.
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-header bg-light">
+        <h5 class="mb-0"><i class="fas fa-clock me-2"></i>Agendamento de Backups Automáticos</h5>
+    </div>
+    <div class="card-body">
+        <p>Para automatizar a criação de backups, você pode usar o agendador de tarefas do seu sistema operacional para executar o script <code>backup_scheduler.py</code>.</p>
+        
+        <h6>Exemplo para Windows (via Agendador de Tarefas):</h6>
+        <ol>
+            <li>Abra o "Agendador de Tarefas".</li>
+            <li>Crie uma nova tarefa e defina um gatilho (ex: diariamente às 02:00).</li>
+            <li>Na aba "Ações", crie uma nova ação com as seguintes configurações:</li>
+            <ul>
+                <li><strong>Ação:</strong> Iniciar um programa</li>
+                <li><strong>Programa/script:</strong> <code>C:\caminho\para\seu\python.exe</code> (o caminho para o executável do Python no seu ambiente virtual <code>.venv\Scripts\python.exe</code>)</li>
+                <li><strong>Adicione argumentos (opcional):</strong> <code>C:\caminho\completo\para\o\projeto\backup_scheduler.py</code></li>
+            </ul>
+        </ol>
+
+        <h6 class="mt-4">Exemplo para Linux/macOS (via Cron):</h6>
+        <ol>
+            <li>Abra o terminal e digite <code>crontab -e</code>.</li>
+            <li>Adicione a seguinte linha para executar o backup todos os dias às 2 da manhã:</li>
+        </ol>
+        <pre class="bg-dark text-white p-2 rounded"><code>0 2 * * * /caminho/para/seu/python /caminho/completo/para/o/projeto/backup_scheduler.py</code></pre>
+        <small class="text-muted">Lembre-se de substituir os caminhos pelos diretórios corretos do seu ambiente e projeto.</small>
+    </div>
+</div>
+
+
+<div class="modal fade" id="deleteBackupModal" tabindex="-1" aria-labelledby="deleteBackupModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteBackupModalLabel">Confirmar Exclusão</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                Tem certeza de que deseja excluir o backup <strong id="backupFileName"></strong>? Esta ação não pode ser desfeita.
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <form id="deleteBackupForm" method="POST">
+                    <button type="submit" class="btn btn-danger">Sim, Excluir</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var deleteBackupModal = document.getElementById('deleteBackupModal');
+    if (deleteBackupModal) {
+        deleteBackupModal.addEventListener('show.bs.modal', function (event) {
+            var button = event.relatedTarget;
+            var backupFilename = button.getAttribute('data-backup-filename');
+            
+            var modalText = deleteBackupModal.querySelector('#backupFileName');
+            var deleteForm = deleteBackupModal.querySelector('#deleteBackupForm');
+            
+            modalText.textContent = backupFilename;
+            deleteForm.action = '/delete_backup/' + backupFilename;
+        });
+    }
+});
+</script>
+{% endblock content %}

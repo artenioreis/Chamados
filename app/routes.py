@@ -1,7 +1,8 @@
 import os
 import uuid
+import shutil
 from werkzeug.utils import secure_filename
-from flask import render_template, url_for, flash, redirect, request, abort, jsonify, Blueprint, current_app
+from flask import render_template, url_for, flash, redirect, request, abort, jsonify, Blueprint, current_app, send_from_directory
 from app import db
 from app.forms import LoginForm, RegistrationForm, TicketForm, CommentForm, TicketUpdateForm, ChangePasswordForm
 from app.models import User, Ticket, Comment, TicketHistory
@@ -304,6 +305,75 @@ def toggle_user_status(user_id):
     status = "ativado" if user_to_toggle.is_active else "bloqueado"
     flash(f'O usuário {user_to_toggle.name} foi {status} com sucesso.', 'success')
     return redirect(url_for('main.user_management'))
+
+# --- ROTAS DE BACKUP ---
+@main.route('/backup', methods=['GET'])
+@login_required
+def backup():
+    if not is_admin():
+        abort(403)
+    
+    backup_folder = current_app.config['BACKUP_FOLDER']
+    os.makedirs(backup_folder, exist_ok=True)
+    
+    backups = sorted(
+        [f for f in os.listdir(backup_folder) if f.endswith('.db')],
+        reverse=True
+    )
+    
+    return render_template('backup.html', title='Backup do Sistema', backups=backups)
+
+@main.route('/create_backup', methods=['POST'])
+@login_required
+def create_backup():
+    if not is_admin():
+        abort(403)
+        
+    db_path = os.path.join(current_app.instance_path, 'site.db')
+    backup_folder = current_app.config['BACKUP_FOLDER']
+    os.makedirs(backup_folder, exist_ok=True)
+    
+    timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+    backup_filename = f'site_{timestamp}.db'
+    backup_path = os.path.join(backup_folder, backup_filename)
+    
+    try:
+        shutil.copy2(db_path, backup_path)
+        flash(f'Backup "{backup_filename}" criado com sucesso!', 'success')
+    except Exception as e:
+        flash(f'Erro ao criar o backup: {e}', 'danger')
+        
+    return redirect(url_for('main.backup'))
+
+@main.route('/download_backup/<filename>')
+@login_required
+def download_backup(filename):
+    if not is_admin():
+        abort(403)
+    
+    backup_folder = current_app.config['BACKUP_FOLDER']
+    return send_from_directory(directory=backup_folder, path=filename, as_attachment=True)
+
+@main.route('/delete_backup/<filename>', methods=['POST'])
+@login_required
+def delete_backup(filename):
+    if not is_admin():
+        abort(403)
+        
+    backup_folder = current_app.config['BACKUP_FOLDER']
+    file_path = os.path.join(backup_folder, filename)
+    
+    try:
+        if os.path.exists(file_path):
+            os.remove(file_path)
+            flash(f'Backup "{filename}" excluído com sucesso.', 'success')
+        else:
+            flash(f'Arquivo de backup não encontrado.', 'warning')
+    except Exception as e:
+        flash(f'Erro ao excluir o backup: {e}', 'danger')
+
+    return redirect(url_for('main.backup'))
+
 
 @main.errorhandler(403)
 def forbidden(error):
