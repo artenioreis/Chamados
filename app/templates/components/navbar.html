@@ -33,9 +33,6 @@
                         <li class="nav-item">
                             <a class="nav-link" href="{{ url_for('main.user_management') }}">Gerenciar Usuários</a>
                         </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('main.backup') }}">Backup</a>
-                        </li>
                     {% endif %}
                 {% endif %}
             </ul>
@@ -48,6 +45,13 @@
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
                             <li><a class="dropdown-item" href="#">Meu Perfil</a></li>
+                            <li>
+                                <a class="dropdown-item" href="#" id="toggle-sound">
+                                    <i class="fas fa-volume-mute me-2" id="sound-icon-off" style="display: none;"></i>
+                                    <i class="fas fa-volume-up me-2" id="sound-icon-on"></i>
+                                    <span id="sound-text">Desativar Som</span>
+                                </a>
+                            </li>
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="{{ url_for('main.logout') }}"><i class="fas fa-sign-out-alt me-2"></i>Sair</a></li>
                         </ul>

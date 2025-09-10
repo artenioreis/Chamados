@@ -2,7 +2,7 @@ import os
 import uuid
 import shutil
 from werkzeug.utils import secure_filename
-from flask import render_template, url_for, flash, redirect, request, abort, jsonify, Blueprint, current_app, send_from_directory
+from flask import render_template, url_for, flash, redirect, request, abort, jsonify, Blueprint, current_app, send_from_directory, session
 from app import db
 from app.forms import LoginForm, RegistrationForm, TicketForm, CommentForm, TicketUpdateForm, ChangePasswordForm
 from app.models import User, Ticket, Comment, TicketHistory
@@ -20,12 +20,10 @@ def save_attachment(form_attachment):
     if not form_attachment or not form_attachment.filename:
         return None
         
-    # Gera um nome de arquivo aleatório e seguro
     random_hex = uuid.uuid4().hex
     _, f_ext = os.path.splitext(form_attachment.filename)
     secure_name = secure_filename(f"{random_hex}{f_ext}")
     
-    # Garante que a pasta de uploads exista
     upload_path = current_app.config['UPLOAD_FOLDER']
     os.makedirs(upload_path, exist_ok=True)
     
@@ -40,11 +38,11 @@ def is_admin():
 def is_tecnico():
     return current_user.is_authenticated and (current_user.access_level == 'tecnico' or current_user.access_level == 'administrador')
 
-# ... (outras rotas como home, login, etc., sem alterações) ...
 @main.route('/')
 @main.route('/home')
 @login_required
 def home():
+    session.pop('last_check_time', None)
     query_param = request.args.get('q', '', type=str)
     if current_user.access_level == 'administrador':
         base_query = Ticket.query
@@ -101,13 +99,11 @@ def register():
         return redirect(url_for('main.register'))
     return render_template('register.html', title='Cadastrar Usuário', form=form)
 
-# --- ROTA create_ticket MODIFICADA ---
 @main.route('/create_ticket', methods=['GET', 'POST'])
 @login_required
 def create_ticket():
     form = TicketForm()
     if form.validate_on_submit():
-        # Lógica para salvar o anexo, se houver
         attachment_filename = None
         if form.attachment.data:
             attachment_filename = save_attachment(form.attachment.data)
@@ -119,7 +115,7 @@ def create_ticket():
             origin_sector=form.origin_sector.data,
             target_sector=form.target_sector.data,
             priority=form.priority.data,
-            attachment_filename=attachment_filename  # Salva o nome do arquivo no banco
+            attachment_filename=attachment_filename
         )
         db.session.add(ticket)
         db.session.commit()
@@ -134,7 +130,6 @@ def create_ticket():
     form.origin_sector.data = current_user.sector
     return render_template('create_ticket.html', title='Abrir Chamado', form=form)
 
-# ... (todas as outras rotas como view_ticket, kanban, dashboard, reports, user_management, etc., sem alterações)
 @main.route('/ticket/<int:ticket_id>', methods=['GET', 'POST'])
 @login_required
 def view_ticket(ticket_id):
@@ -187,6 +182,7 @@ def view_ticket(ticket_id):
 @main.route('/tickets_kanban')
 @login_required
 def tickets_kanban():
+    session.pop('last_check_time', None)
     query_param = request.args.get('q', '', type=str)
     if current_user.access_level == 'administrador':
         base_query = Ticket.query
@@ -306,7 +302,6 @@ def toggle_user_status(user_id):
     flash(f'O usuário {user_to_toggle.name} foi {status} com sucesso.', 'success')
     return redirect(url_for('main.user_management'))
 
-# --- ROTAS DE BACKUP ---
 @main.route('/backup', methods=['GET'])
 @login_required
 def backup():
@@ -373,6 +368,59 @@ def delete_backup(filename):
         flash(f'Erro ao excluir o backup: {e}', 'danger')
 
     return redirect(url_for('main.backup'))
+
+@main.route('/check_updates')
+@login_required
+def check_updates():
+    last_check_str = session.get('last_check_time')
+    
+    if not last_check_str:
+        session['last_check_time'] = datetime.utcnow().isoformat()
+        return jsonify(updates=[])
+
+    last_check_dt = datetime.fromisoformat(last_check_str)
+    
+    updates_payload = []
+    notified_tickets = set()
+
+    # 1. Verificar novos chamados
+    new_tickets = Ticket.query.filter(Ticket.created_at > last_check_dt).all()
+    for ticket in new_tickets:
+        # Notificar o técnico responsável (se houver) ou todos os técnicos do setor de destino
+        tecnicos_do_setor = User.query.filter_by(sector=ticket.target_sector, access_level='tecnico').all()
+        admins = User.query.filter_by(access_level='administrador').all()
+        
+        notificar_para = set(tecnicos_do_setor + admins)
+        
+        if current_user in notificar_para and ticket.user_id != current_user.id:
+            if ticket.id not in notified_tickets:
+                message = f"Novo chamado #{ticket.id}: '{ticket.title}' aberto por {ticket.author.name}."
+                updates_payload.append({
+                    'message': message,
+                    'url': url_for('main.view_ticket', ticket_id=ticket.id)
+                })
+                notified_tickets.add(ticket.id)
+
+    # 2. Verificar novos comentários
+    new_comments = Comment.query.filter(Comment.created_at > last_check_dt, Comment.user_id != current_user.id).all()
+    for comment in new_comments:
+        ticket = comment.ticket
+        
+        # Notificar o autor do chamado e o técnico responsável
+        is_author = ticket.user_id == current_user.id
+        is_assignee = ticket.assigned_to is not None and ticket.assigned_to == current_user.id
+        
+        if is_author or is_assignee:
+            if ticket.id not in notified_tickets:
+                message = f"Novo comentário no chamado #{ticket.id}: '{ticket.title}' por {comment.comment_author.name}."
+                updates_payload.append({
+                    'message': message,
+                    'url': url_for('main.view_ticket', ticket_id=ticket.id)
+                })
+                notified_tickets.add(ticket.id)
+
+    session['last_check_time'] = datetime.utcnow().isoformat()
+    return jsonify(updates=updates_payload)
 
 
 @main.errorhandler(403)
