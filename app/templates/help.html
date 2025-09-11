@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row mt-4">
+    <div class="col-12 mb-3">
+        <img src="https://neosul.com.br/clientes/1/img/logo.png" alt="Logo Neosul" style="max-width: 250px; height: auto;">
+    </div>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-header bg-primary text-white">
+        <h1 class="mb-0"><i class="fas fa-book me-2"></i>Manual do Utilizador - Sistema de Chamados</h1>
+    </div>
+    <div class="card-body">
+        <p class="lead">Bem-vindo ao Sistema de Chamados! Esta ferramenta foi desenhada para simplificar a forma como as solicitações são geridas na empresa. Este manual irá guiá-lo através de todas as funcionalidades disponíveis.</p>
+
+        <hr>
+
+        <h2 class="mt-4">1. Funcionalidades Gerais (Para Todos os Utilizadores)</h2>
+        <p>Qualquer utilizador autenticado no sistema tem acesso às seguintes funcionalidades.</p>
+
+        <h4 class="mt-3">Acesso ao Sistema</h4>
+        <p>Para entrar, utilize o seu e-mail e palavra-passe fornecidos pelo administrador na página de Login. Caso não tenha uma conta, solicite ao seu administrador para criar uma.</p>
+
+        <h4 class="mt-3">Página Inicial (Dashboard Pessoal)</h4>
+        <p>A página inicial exibe os chamados mais recentes que lhe dizem respeito. Por defeito, apenas são mostrados os chamados com o estado "Aberto" ou "Em Atendimento". Pode utilizar a barra de pesquisa para encontrar um chamado específico por número (ID) ou por palavras no título. Ao pesquisar, serão mostrados chamados com qualquer estado, incluindo "Resolvido" e "Fechado".</p>
+
+        <h4 class="mt-3">Abrir um Novo Chamado</h4>
+        <ol>
+            <li>Clique em "Abrir Chamado" no menu de navegação.</li>
+            <li>Preencha o formulário com as seguintes informações:
+                <ul>
+                    <li><strong>Título:</strong> Um resumo breve e claro do problema ou solicitação.</li>
+                    <li><strong>Descrição:</strong> Detalhes completos sobre o que precisa.</li>
+                    <li><strong>Anexar Imagem:</strong> Pode anexar uma imagem (como uma captura de ecrã) para ajudar a ilustrar o problema.</li>
+                    <li><strong>Setor de Origem/Destino:</strong> O seu setor e o setor para o qual o chamado se destina.</li>
+                    <li><strong>Prioridade:</strong> Defina a urgência como Baixa, Média ou Alta.</li>
+                </ul>
+            </li>
+            <li>Clique em "Abrir Chamado" para submeter.</li>
+        </ol>
+
+        <h4 class="mt-3">Visualização Kanban</h4>
+        <p>Clique em "Kanban" no menu para ver todos os seus chamados organizados por estado: Aberto, Em Atendimento, Resolvido e Fechado. Esta visualização oferece uma forma rápida e clara de acompanhar o progresso de cada solicitação.</p>
+
+        <h4 class="mt-3">Detalhes do Chamado e Comentários</h4>
+        <p>Ao clicar em "Ver Detalhes" em qualquer card de chamado, será levado para a página de detalhes daquele chamado. Nessa página, pode ver toda a descrição e informações do chamado, visualizar o anexo, se houver, e adicionar comentários para comunicar com a equipa técnica.</p>
+
+        <h4 class="mt-3">Notificações</h4>
+        <p>Receberá uma notificação em pop-up com um alerta sonoro sempre que um novo chamado for aberto no seu setor ou um novo comentário for adicionado a um chamado que abriu ou que lhe foi atribuído. Pode desativar o som das notificações clicando no seu nome no canto superior direito e selecionando a opção "Desativar Som".</p>
+
+        <hr>
+
+        <h2 class="mt-4">2. Funcionalidades para Técnicos e Administradores</h2>
+        <p>Utilizadores com nível de acesso Técnico ou Administrador têm acesso a todas as funcionalidades acima, mais as seguintes ferramentas de gestão.</p>
+
+        <h4 class="mt-3">Visualização de Chamados Ampliada</h4>
+        <p>Na página inicial e no Kanban, os técnicos visualizam todos os chamados abertos por ou destinados ao seu setor, além dos chamados que lhes foram diretamente atribuídos.</p>
+
+        <h4 class="mt-3">Atualizar Estado do Chamado (Drag-and-Drop)</h4>
+        <p>Na vista Kanban, pode arrastar e soltar os cards de chamados entre as colunas para atualizar o seu estado de forma rápida e intuitiva (ex: de "Aberto" para "Em Atendimento").</p>
+
+        <h4 class="mt-3">Gestão na Página de Detalhes</h4>
+        <p>Na página de detalhes de um chamado, os técnicos podem alterar o Estado (Status), mudar a Prioridade e atribuir o chamado a um técnico específico, incluindo a si mesmo.</p>
+
+        <h4 class="mt-3">Dashboard de Métricas</h4>
+        <p>Aceda ao "Dashboard" no menu para visualizar gráficos sobre a operação: Chamados por Estado, Chamados por Setor de Destino e Chamados por Prioridade.</p>
+
+        <h4 class="mt-3">Relatórios do Sistema</h4>
+        <p>Aceda a "Relatórios" para obter dados consolidados como o ranking de utilizadores que mais abrem chamados e o tempo médio de fecho dos chamados. Pode também imprimir um relatório da página.</p>
+
+        <hr>
+
+        <h2 class="mt-4">3. Funcionalidades Exclusivas para Administradores</h2>
+        <p>Os Administradores possuem acesso total ao sistema, incluindo todas as funcionalidades de Colaboradores e Técnicos, mais as seguintes ferramentas de administração.</p>
+
+        <h4 class="mt-3">Visualização Total</h4>
+        <p>Os administradores têm visibilidade sobre todos os chamados registados no sistema, de todos os utilizadores e setores.</p>
+
+        <h4 class="mt-3">Gestão de Utilizadores</h4>
+        <p>No menu, aceda a "Gerenciar Usuários" para ver a lista completa de utilizadores, alterar a palavra-passe, bloquear/ativar contas e excluir utilizadores. Para adicionar novos, clique em "Cadastrar Usuário".</p>
+
+        <h4 class="mt-3">Backup do Sistema</h4>
+        <p>No menu, aceda a "Backup" para criar, baixar ou excluir cópias de segurança da base de dados. A página também inclui instruções para agendar backups automáticos.</p>
+    </div>
+</div>
+{% endblock content %}

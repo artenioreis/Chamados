@@ -1,4 +1,5 @@
 document.addEventListener('DOMContentLoaded', function() {
+    
     // --- LÓGICA DOS GRÁFICOS (DASHBOARD) ---
     const statusCtx = document.getElementById('statusChart');
     if (statusCtx) {
@@ -180,8 +181,18 @@ document.addEventListener('DOMContentLoaded', function() {
                     clearInterval(updateInterval); 
                 });
         }
-
-        updateSoundButtonUI();
+        
+        if (toggleSoundBtn) {
+            updateSoundButtonUI();
+        }
         const updateInterval = setInterval(checkForUpdates, 15000);
+    }
+    
+    // --- LÓGICA PARA IMPRIMIR RELATÓRIO ---
+    const printButton = document.getElementById('print-report-btn');
+    if (printButton) {
+        printButton.addEventListener('click', function() {
+            window.print();
+        });
     }
 });

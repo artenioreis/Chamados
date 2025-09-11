@@ -8,7 +8,7 @@ from app.forms import LoginForm, RegistrationForm, TicketForm, CommentForm, Tick
 from app.models import User, Ticket, Comment, TicketHistory
 from flask_login import login_user, current_user, logout_user, login_required
 from werkzeug.security import generate_password_hash, check_password_hash
-from sqlalchemy import func, or_, cast, String
+from sqlalchemy import func, or_, cast, String, not_
 import json
 from datetime import datetime, timedelta
 
@@ -44,6 +44,7 @@ def is_tecnico():
 def home():
     session.pop('last_check_time', None)
     query_param = request.args.get('q', '', type=str)
+    
     if current_user.access_level == 'administrador':
         base_query = Ticket.query
     elif current_user.access_level == 'tecnico':
@@ -54,6 +55,8 @@ def home():
     if query_param:
         search_term = f"%{query_param}%"
         base_query = base_query.filter(or_(Ticket.title.ilike(search_term), cast(Ticket.id, String).ilike(search_term)))
+    else:
+        base_query = base_query.filter(not_(Ticket.status.in_(['Resolvido', 'Fechado'])))
 
     tickets = base_query.order_by(Ticket.created_at.desc()).all()
     return render_template('index.html', title='Início', tickets=tickets)
@@ -302,6 +305,7 @@ def toggle_user_status(user_id):
     flash(f'O usuário {user_to_toggle.name} foi {status} com sucesso.', 'success')
     return redirect(url_for('main.user_management'))
 
+# --- ROTAS DE BACKUP ---
 @main.route('/backup', methods=['GET'])
 @login_required
 def backup():
@@ -386,7 +390,6 @@ def check_updates():
     # 1. Verificar novos chamados
     new_tickets = Ticket.query.filter(Ticket.created_at > last_check_dt).all()
     for ticket in new_tickets:
-        # Notificar o técnico responsável (se houver) ou todos os técnicos do setor de destino
         tecnicos_do_setor = User.query.filter_by(sector=ticket.target_sector, access_level='tecnico').all()
         admins = User.query.filter_by(access_level='administrador').all()
         
@@ -406,7 +409,6 @@ def check_updates():
     for comment in new_comments:
         ticket = comment.ticket
         
-        # Notificar o autor do chamado e o técnico responsável
         is_author = ticket.user_id == current_user.id
         is_assignee = ticket.assigned_to is not None and ticket.assigned_to == current_user.id
         
