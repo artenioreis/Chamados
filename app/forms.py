@@ -36,21 +36,18 @@ class TicketForm(FlaskForm):
         FileAllowed(['jpg', 'png', 'jpeg', 'gif'], 'Apenas imagens são permitidas!')
     ])
     
-    # --- OPÇÕES DO SETOR DE ORIGEM ---
     origin_sector = SelectField('Setor de Origem', choices=[
         ('TI', 'TI'), ('Vendas', 'Vendas'), ('Faturamento', 'Faturamento'), 
         ('Contas a Pagar', 'Contas a Pagar'), ('Contas a Receber', 'Contas a Receber'), 
         ('RH', 'RH'), ('Marketing', 'Marketing'), ('Outros', 'Outros')
     ], validators=[DataRequired()])
     
-    # --- OPÇÕES DO SETOR DE DESTINO ---
     target_sector = SelectField('Setor de Destino', choices=[
         ('TI', 'TI'), ('Vendas', 'Vendas'), ('Faturamento', 'Faturamento'), 
         ('Contas a Pagar', 'Contas a Pagar'), ('Contas a Receber', 'Contas a Receber'), 
         ('RH', 'RH'), ('Marketing', 'Marketing'), ('Outros', 'Outros')
     ], validators=[DataRequired()])
     
-    # --- OPÇÕES DE PRIORIDADE ---
     priority = SelectField('Prioridade', choices=[
         ('baixa', 'Baixa'), 
         ('media', 'Média'), 
@@ -78,3 +75,19 @@ class ChangePasswordForm(FlaskForm):
     password = PasswordField('Nova Senha', validators=[DataRequired(), Length(min=6)])
     confirm_password = PasswordField('Confirmar Nova Senha', validators=[DataRequired(), EqualTo('password', message='As senhas devem ser iguais.')])
     submit = SubmitField('Alterar Senha')
+
+class ChatMessageForm(FlaskForm):
+    content = TextAreaField('Mensagem', validators=[Length(min=0, max=500)])
+    attachment = FileField('Anexo', validators=[
+        FileAllowed(['jpg', 'png', 'jpeg', 'gif', 'pdf', 'doc', 'docx', 'xls', 'xlsx', 'txt'], 
+                    'Apenas imagens, PDFs, documentos e texto são permitidos!')
+    ])
+    submit = SubmitField('Enviar')
+
+    def validate(self, **kwargs):
+        if not super().validate(**kwargs):
+            return False
+        if not self.content.data and not self.attachment.data:
+            self.content.errors.append('Você precisa enviar uma mensagem ou um anexo.')
+            return False
+        return True

@@ -79,3 +79,28 @@ class Notification(db.Model):
 
     def __repr__(self):
         return f"Notification('{self.message}', User: {self.user_id}, Read: {self.is_read})"
+
+class ChatMessage(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    sender_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    recipient_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    content = db.Column(db.Text, nullable=True)
+    timestamp = db.Column(db.DateTime, index=True, default=datetime.utcnow)
+    attachment_filename = db.Column(db.String(100), nullable=True)
+
+    sender = db.relationship('User', foreign_keys=[sender_id], backref='sent_messages')
+    recipient = db.relationship('User', foreign_keys=[recipient_id], backref='received_messages')
+
+    def __repr__(self):
+        return f'<ChatMessage {self.sender_id} to {self.recipient_id}>'
+
+# Novo modelo para arquivar conversas
+class ArchivedConversation(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    with_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+
+    __table_args__ = (db.UniqueConstraint('user_id', 'with_user_id', name='_user_with_user_uc'),)
+
+    def __repr__(self):
+        return f'<ArchivedConversation user:{self.user_id} with:{self.with_user_id}>'

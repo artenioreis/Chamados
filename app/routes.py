@@ -4,8 +4,8 @@ import shutil
 from werkzeug.utils import secure_filename
 from flask import render_template, url_for, flash, redirect, request, abort, jsonify, Blueprint, current_app, send_from_directory, session
 from app import db
-from app.forms import LoginForm, RegistrationForm, TicketForm, CommentForm, TicketUpdateForm, ChangePasswordForm
-from app.models import User, Ticket, Comment, TicketHistory
+from app.forms import LoginForm, RegistrationForm, TicketForm, CommentForm, TicketUpdateForm, ChangePasswordForm, ChatMessageForm
+from app.models import User, Ticket, Comment, TicketHistory, ChatMessage, ArchivedConversation
 from flask_login import login_user, current_user, logout_user, login_required
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy import func, or_, cast, String, not_
@@ -14,22 +14,31 @@ from datetime import datetime, timedelta
 
 main = Blueprint('main', __name__)
 
-# --- FUNÇÃO AUXILIAR PARA SALVAR ANEXOS ---
+# --- FUNÇÕES AUXILIARES ---
 def save_attachment(form_attachment):
-    """Salva o anexo com um nome seguro e único e retorna o nome do arquivo."""
+    """Salva o anexo do chamado com um nome seguro e único e retorna o nome do arquivo."""
     if not form_attachment or not form_attachment.filename:
         return None
-        
     random_hex = uuid.uuid4().hex
     _, f_ext = os.path.splitext(form_attachment.filename)
     secure_name = secure_filename(f"{random_hex}{f_ext}")
-    
     upload_path = current_app.config['UPLOAD_FOLDER']
     os.makedirs(upload_path, exist_ok=True)
-    
     file_path = os.path.join(upload_path, secure_name)
     form_attachment.save(file_path)
-    
+    return secure_name
+
+def save_chat_attachment(form_attachment):
+    """Salva o anexo do chat com um nome seguro e único e retorna o nome do arquivo."""
+    if not form_attachment or not form_attachment.filename:
+        return None
+    random_hex = uuid.uuid4().hex
+    _, f_ext = os.path.splitext(form_attachment.filename)
+    secure_name = secure_filename(f"{random_hex}{f_ext}")
+    upload_path = os.path.join(current_app.static_folder, 'chat_uploads')
+    os.makedirs(upload_path, exist_ok=True)
+    file_path = os.path.join(upload_path, secure_name)
+    form_attachment.save(file_path)
     return secure_name
 
 def is_admin():
@@ -38,6 +47,7 @@ def is_admin():
 def is_tecnico():
     return current_user.is_authenticated and (current_user.access_level == 'tecnico' or current_user.access_level == 'administrador')
 
+# --- ROTAS PRINCIPAIS E DE USUÁRIOS ---
 @main.route('/')
 @main.route('/home')
 @login_required
@@ -99,18 +109,17 @@ def register():
         db.session.add(user)
         db.session.commit()
         flash(f'Conta criada para {form.name.data}!', 'success')
-        return redirect(url_for('main.register'))
+        return redirect(url_for('main.user_management'))
     return render_template('register.html', title='Cadastrar Usuário', form=form)
 
+
+# --- ROTAS DE CHAMADOS ---
 @main.route('/create_ticket', methods=['GET', 'POST'])
 @login_required
 def create_ticket():
     form = TicketForm()
     if form.validate_on_submit():
-        attachment_filename = None
-        if form.attachment.data:
-            attachment_filename = save_attachment(form.attachment.data)
-
+        attachment_filename = save_attachment(form.attachment.data)
         ticket = Ticket(
             title=form.title.data,
             description=form.description.data,
@@ -122,14 +131,11 @@ def create_ticket():
         )
         db.session.add(ticket)
         db.session.commit()
-        
         history_entry = TicketHistory(ticket_id=ticket.id, changed_by_user_id=current_user.id, field_changed='status', old_value='N/A', new_value='Aberto')
         db.session.add(history_entry)
         db.session.commit()
-        
         flash('Seu chamado foi aberto com sucesso!', 'success')
         return redirect(url_for('main.tickets_kanban'))
-    
     form.origin_sector.data = current_user.sector
     return render_template('create_ticket.html', title='Abrir Chamado', form=form)
 
@@ -137,15 +143,13 @@ def create_ticket():
 @login_required
 def view_ticket(ticket_id):
     ticket = Ticket.query.get_or_404(ticket_id)
-    if ticket.user_id != current_user.id and not (is_tecnico() and (ticket.target_sector == current_user.sector or ticket.origin_sector == current_user.sector or is_admin())):
+    if not (current_user.id == ticket.user_id or (is_tecnico() and (ticket.target_sector == current_user.sector or ticket.origin_sector == current_user.sector)) or is_admin()):
         abort(403)
-
     comment_form = CommentForm()
     update_form = TicketUpdateForm()
     if is_tecnico():
         tecnicos = User.query.filter(or_(User.access_level == 'tecnico', User.access_level == 'administrador')).all()
         update_form.assigned_to.choices = [(0, 'Não Atribuído')] + [(t.id, f"{t.name} ({t.sector})") for t in tecnicos]
-
     if request.method == 'POST':
         if update_form.submit_update.data and update_form.validate():
             new_status = update_form.status.data
@@ -162,8 +166,10 @@ def view_ticket(ticket_id):
                 ticket.priority = update_form.priority.data
             new_assigned_to = update_form.assigned_to.data if update_form.assigned_to.data != 0 else None
             if new_assigned_to != ticket.assigned_to:
-                old_assignee, new_assignee = User.query.get(ticket.assigned_to), User.query.get(new_assigned_to)
-                old_assignee_name, new_assignee_name = (old_assignee.name if old_assignee else 'N/A'), (new_assignee.name if new_assignee else 'N/A')
+                old_assignee = User.query.get(ticket.assigned_to)
+                new_assignee = User.query.get(new_assigned_to)
+                old_assignee_name = old_assignee.name if old_assignee else 'N/A'
+                new_assignee_name = new_assignee.name if new_assignee else 'N/A'
                 changes.append(('assigned_to', old_assignee_name, new_assignee_name))
                 ticket.assigned_to = new_assigned_to
             for field, old_val, new_val in changes:
@@ -179,7 +185,9 @@ def view_ticket(ticket_id):
             flash('Comentário adicionado!', 'success')
             return redirect(url_for('main.view_ticket', ticket_id=ticket.id))
     if request.method == 'GET' and is_tecnico():
-        update_form.status.data, update_form.priority.data, update_form.assigned_to.data = ticket.status, ticket.priority, (ticket.assigned_to if ticket.assigned_to else 0)
+        update_form.status.data = ticket.status
+        update_form.priority.data = ticket.priority
+        update_form.assigned_to.data = ticket.assigned_to or 0
     return render_template('view_ticket.html', title=ticket.title, ticket=ticket, comment_form=comment_form, update_form=update_form, is_tecnico=is_tecnico(), is_admin=is_admin())
 
 @main.route('/tickets_kanban')
@@ -202,15 +210,20 @@ def tickets_kanban():
 @main.route('/update_ticket_status/<int:ticket_id>', methods=['POST'])
 @login_required
 def update_ticket_status(ticket_id):
-    if not is_tecnico(): return jsonify({'success': False, 'message': 'Permissão negada.'}), 403
-    ticket, data = Ticket.query.get_or_404(ticket_id), request.get_json()
+    if not is_tecnico():
+        return jsonify({'success': False, 'message': 'Permissão negada.'}), 403
+    ticket = Ticket.query.get_or_404(ticket_id)
+    data = request.get_json()
     new_status = data.get('new_status')
-    if not new_status: return jsonify({'success': False, 'message': 'Novo status não fornecido.'}), 400
+    if not new_status:
+        return jsonify({'success': False, 'message': 'Novo status não fornecido.'}), 400
     old_status = ticket.status
     if old_status != new_status:
         try:
-            if new_status == 'Fechado': ticket.closed_at = datetime.utcnow()
-            else: ticket.closed_at = None
+            if new_status == 'Fechado':
+                ticket.closed_at = datetime.utcnow()
+            else:
+                ticket.closed_at = None
             ticket.status = new_status
             history_entry = TicketHistory(ticket_id=ticket.id, changed_by_user_id=current_user.id, field_changed='status', old_value=old_status, new_value=new_status)
             db.session.add(history_entry)
@@ -221,6 +234,7 @@ def update_ticket_status(ticket_id):
             return jsonify({'success': False, 'message': 'Erro ao salvar no banco de dados.'}), 500
     return jsonify({'success': False, 'message': 'O status já é o mesmo.'})
 
+# --- ROTAS DE DASHBOARD E RELATÓRIOS ---
 @main.route('/dashboard')
 @login_required
 def dashboard():
@@ -254,7 +268,7 @@ def reports():
     average_closing_time, closing_time_details = None, []
     if closed_tickets:
         total_seconds = sum([(t.closed_at - t.created_at).total_seconds() for t in closed_tickets])
-        average_seconds = total_seconds / len(closed_tickets)
+        average_seconds = total_seconds / len(closed_tickets) if closed_tickets else 0
         average_closing_time_td = timedelta(seconds=average_seconds)
         average_closing_time = format_timedelta(average_closing_time_td)
         for ticket in closed_tickets:
@@ -262,6 +276,7 @@ def reports():
             closing_time_details.append({'id': ticket.id, 'title': ticket.title, 'author': ticket.author.name, 'duration_str': format_timedelta(duration)})
     return render_template('reports.html', title='Relatórios', tickets_per_user=tickets_per_user, average_closing_time=average_closing_time, closing_time_details=closing_time_details)
 
+# --- ROTAS DE ADMINISTRAÇÃO ---
 @main.route('/users', methods=['GET', 'POST'])
 @login_required
 def user_management():
@@ -309,121 +324,183 @@ def toggle_user_status(user_id):
 @main.route('/backup', methods=['GET'])
 @login_required
 def backup():
-    if not is_admin():
-        abort(403)
-    
+    if not is_admin(): abort(403)
     backup_folder = current_app.config['BACKUP_FOLDER']
     os.makedirs(backup_folder, exist_ok=True)
-    
-    backups = sorted(
-        [f for f in os.listdir(backup_folder) if f.endswith('.db')],
-        reverse=True
-    )
-    
+    backups = sorted([f for f in os.listdir(backup_folder) if f.endswith('.db')], reverse=True)
     return render_template('backup.html', title='Backup do Sistema', backups=backups)
 
 @main.route('/create_backup', methods=['POST'])
 @login_required
 def create_backup():
-    if not is_admin():
-        abort(403)
-        
+    if not is_admin(): abort(403)
     db_path = os.path.join(current_app.instance_path, 'site.db')
     backup_folder = current_app.config['BACKUP_FOLDER']
     os.makedirs(backup_folder, exist_ok=True)
-    
     timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
     backup_filename = f'site_{timestamp}.db'
     backup_path = os.path.join(backup_folder, backup_filename)
-    
     try:
         shutil.copy2(db_path, backup_path)
         flash(f'Backup "{backup_filename}" criado com sucesso!', 'success')
     except Exception as e:
         flash(f'Erro ao criar o backup: {e}', 'danger')
-        
     return redirect(url_for('main.backup'))
 
 @main.route('/download_backup/<filename>')
 @login_required
 def download_backup(filename):
-    if not is_admin():
-        abort(403)
-    
+    if not is_admin(): abort(403)
     backup_folder = current_app.config['BACKUP_FOLDER']
     return send_from_directory(directory=backup_folder, path=filename, as_attachment=True)
 
 @main.route('/delete_backup/<filename>', methods=['POST'])
 @login_required
 def delete_backup(filename):
-    if not is_admin():
-        abort(403)
-        
+    if not is_admin(): abort(403)
     backup_folder = current_app.config['BACKUP_FOLDER']
     file_path = os.path.join(backup_folder, filename)
-    
     try:
         if os.path.exists(file_path):
             os.remove(file_path)
             flash(f'Backup "{filename}" excluído com sucesso.', 'success')
         else:
-            flash(f'Arquivo de backup não encontrado.', 'warning')
+            flash('Arquivo de backup não encontrado.', 'warning')
     except Exception as e:
         flash(f'Erro ao excluir o backup: {e}', 'danger')
-
     return redirect(url_for('main.backup'))
 
+# --- ROTAS DE API E NOTIFICAÇÕES ---
 @main.route('/check_updates')
 @login_required
 def check_updates():
     last_check_str = session.get('last_check_time')
-    
     if not last_check_str:
         session['last_check_time'] = datetime.utcnow().isoformat()
         return jsonify(updates=[])
-
     last_check_dt = datetime.fromisoformat(last_check_str)
-    
     updates_payload = []
     notified_tickets = set()
-
     # 1. Verificar novos chamados
     new_tickets = Ticket.query.filter(Ticket.created_at > last_check_dt).all()
     for ticket in new_tickets:
         tecnicos_do_setor = User.query.filter_by(sector=ticket.target_sector, access_level='tecnico').all()
         admins = User.query.filter_by(access_level='administrador').all()
-        
         notificar_para = set(tecnicos_do_setor + admins)
-        
         if current_user in notificar_para and ticket.user_id != current_user.id:
             if ticket.id not in notified_tickets:
                 message = f"Novo chamado #{ticket.id}: '{ticket.title}' aberto por {ticket.author.name}."
-                updates_payload.append({
-                    'message': message,
-                    'url': url_for('main.view_ticket', ticket_id=ticket.id)
-                })
+                updates_payload.append({'message': message, 'url': url_for('main.view_ticket', ticket_id=ticket.id)})
                 notified_tickets.add(ticket.id)
-
     # 2. Verificar novos comentários
     new_comments = Comment.query.filter(Comment.created_at > last_check_dt, Comment.user_id != current_user.id).all()
     for comment in new_comments:
         ticket = comment.ticket
-        
         is_author = ticket.user_id == current_user.id
         is_assignee = ticket.assigned_to is not None and ticket.assigned_to == current_user.id
-        
         if is_author or is_assignee:
             if ticket.id not in notified_tickets:
                 message = f"Novo comentário no chamado #{ticket.id}: '{ticket.title}' por {comment.comment_author.name}."
-                updates_payload.append({
-                    'message': message,
-                    'url': url_for('main.view_ticket', ticket_id=ticket.id)
-                })
+                updates_payload.append({'message': message, 'url': url_for('main.view_ticket', ticket_id=ticket.id)})
                 notified_tickets.add(ticket.id)
-
     session['last_check_time'] = datetime.utcnow().isoformat()
     return jsonify(updates=updates_payload)
 
+# --- ROTAS DE CHAT ---
+@main.route('/chat', methods=['GET'])
+@login_required
+def chat_users():
+    archived_user_ids = [ac.with_user_id for ac in ArchivedConversation.query.filter_by(user_id=current_user.id).all()]
+    sent_to_ids = db.session.query(ChatMessage.recipient_id).filter(ChatMessage.sender_id == current_user.id).distinct()
+    received_from_ids = db.session.query(ChatMessage.sender_id).filter(ChatMessage.recipient_id == current_user.id).distinct()
+    all_conversation_partner_ids = {row[0] for row in sent_to_ids}.union({row[0] for row in received_from_ids})
+    active_partners = []
+    archived_partners = []
+    if all_conversation_partner_ids:
+        all_partners = User.query.filter(User.id.in_(all_conversation_partner_ids)).order_by(User.name).all()
+        for user in all_partners:
+            if user.id in archived_user_ids:
+                archived_partners.append(user)
+            else:
+                active_partners.append(user)
+    users_with_no_history = User.query.filter(
+        User.id != current_user.id,
+        ~User.id.in_(all_conversation_partner_ids)
+    ).order_by(User.name).all()
+    active_partners.extend(users_with_no_history)
+    return render_template('chat_users.html', active_partners=active_partners, archived_partners=archived_partners, title="Chat")
+
+@main.route('/chat/<int:recipient_id>', methods=['GET', 'POST'])
+@login_required
+def chat_conversation(recipient_id):
+    recipient = User.query.get_or_404(recipient_id)
+    form = ChatMessageForm()
+    if form.validate_on_submit():
+        attachment_filename = save_chat_attachment(form.attachment.data)
+        msg = ChatMessage(sender_id=current_user.id,
+                          recipient_id=recipient_id,
+                          content=form.content.data,
+                          attachment_filename=attachment_filename)
+        db.session.add(msg)
+        db.session.commit()
+        return redirect(url_for('main.chat_conversation', recipient_id=recipient_id))
+    messages = ChatMessage.query.filter(
+        or_(
+            (ChatMessage.sender_id == current_user.id) & (ChatMessage.recipient_id == recipient_id),
+            (ChatMessage.sender_id == recipient_id) & (ChatMessage.recipient_id == current_user.id)
+        )
+    ).order_by(ChatMessage.timestamp.asc()).all()
+    return render_template('chat_conversation.html', form=form, recipient=recipient, title=f"Chat com {recipient.name}")
+
+@main.route('/api/chat/<int:recipient_id>/messages')
+@login_required
+def get_chat_messages(recipient_id):
+    messages = ChatMessage.query.filter(
+        or_(
+            (ChatMessage.sender_id == current_user.id) & (ChatMessage.recipient_id == recipient_id),
+            (ChatMessage.sender_id == recipient_id) & (ChatMessage.recipient_id == current_user.id)
+        )
+    ).order_by(ChatMessage.timestamp.asc()).all()
+    messages_data = []
+    for msg in messages:
+        data = {
+            'sender_name': msg.sender.name,
+            'content': msg.content,
+            'timestamp': msg.timestamp.isoformat() + 'Z',
+            'is_current_user': msg.sender_id == current_user.id,
+            'attachment_filename': msg.attachment_filename,
+            'attachment_url': url_for('static', filename=f'chat_uploads/{msg.attachment_filename}') if msg.attachment_filename else None
+        }
+        messages_data.append(data)
+    return jsonify(messages_data)
+
+@main.route('/chat/archive/<int:with_user_id>', methods=['POST'])
+@login_required
+def archive_conversation(with_user_id):
+    existing = ArchivedConversation.query.filter_by(user_id=current_user.id, with_user_id=with_user_id).first()
+    if not existing:
+        archive_record = ArchivedConversation(user_id=current_user.id, with_user_id=with_user_id)
+        db.session.add(archive_record)
+        db.session.commit()
+        flash('Conversa arquivada com sucesso.', 'success')
+    return redirect(url_for('main.chat_users'))
+
+@main.route('/chat/unarchive/<int:with_user_id>', methods=['POST'])
+@login_required
+def unarchive_conversation(with_user_id):
+    archive_record = ArchivedConversation.query.filter_by(user_id=current_user.id, with_user_id=with_user_id).first()
+    if archive_record:
+        db.session.delete(archive_record)
+        db.session.commit()
+        flash('Conversa desarquivada com sucesso.', 'success')
+    return redirect(url_for('main.chat_users'))
+
+
+# --- ROTAS DE AJUDA E ERRO ---
+@main.route('/help')
+@login_required
+def help():
+    return render_template('help.html', title='Ajuda')
 
 @main.errorhandler(403)
 def forbidden(error):

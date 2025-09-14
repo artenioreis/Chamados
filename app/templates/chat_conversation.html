@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="mb-0"><i class="fas fa-comments me-2"></i>Chat com {{ recipient.name }}</h1>
+    <div>
+        <form action="{{ url_for('main.archive_conversation', with_user_id=recipient.id) }}" method="POST" class="d-inline">
+            <button type="submit" class="btn btn-outline-secondary">
+                <i class="fas fa-archive me-1"></i> Arquivar Conversa
+            </button>
+        </form>
+        <a href="{{ url_for('main.chat_users') }}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-1"></i> Voltar
+        </a>
+    </div>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body" id="chat-box" style="height: 400px; overflow-y: auto; display: flex; flex-direction: column;">
+        </div>
+    <div class="card-footer">
+        <form id="chat-form" method="POST" action="{{ url_for('main.chat_conversation', recipient_id=recipient.id) }}" enctype="multipart/form-data">
+            {{ form.hidden_tag() }}
+            <div class="input-group mb-2">
+                {{ form.content(class="form-control", placeholder="Digite sua mensagem...", autocomplete="off", rows="1") }}
+            </div>
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    {{ form.attachment(class="form-control form-control-sm") }}
+                    {% if form.attachment.errors %}
+                        <div class="text-danger small mt-1">
+                            {% for error in form.attachment.errors %}{{ error }}{% endfor %}
+                        </div>
+                    {% endif %}
+                    {% if form.content.errors %}
+                        <div class="text-danger small mt-1">
+                            {% for error in form.content.errors %}{{ error }}{% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+                {{ form.submit(class="btn btn-primary") }}
+            </div>
+        </form>
+    </div>
+</div>
+
+<audio id="chat-notification-sound" src="{{ url_for('static', filename='audio/notification.mp3') }}" preload="auto"></audio>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const chatBox = document.getElementById('chat-box');
+    const recipientId = {{ recipient.id }};
+    const notificationSound = document.getElementById('chat-notification-sound');
+
+    let messageCount = 0;
+    let isInitialLoad = true;
+
+    function scrollToBottom() {
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    function formatTimestamp(isoString) {
+        const date = new Date(isoString);
+        return date.toLocaleString('pt-BR');
+    }
+
+    function fetchMessages() {
+        fetch(`/api/chat/${recipientId}/messages`)
+            .then(response => response.json())
+            .then(messages => {
+                if (messages.length > messageCount && !isInitialLoad) {
+                    const lastMessage = messages[messages.length - 1];
+                    if (lastMessage && !lastMessage.is_current_user) {
+                        notificationSound.play().catch(error => console.log("A reprodução do áudio falhou:", error));
+                    }
+                }
+                
+                messageCount = messages.length;
+                isInitialLoad = false;
+
+                chatBox.innerHTML = '';
+                messages.forEach(msg => {
+                    const messageClass = msg.is_current_user ? 'text-end' : 'text-start';
+                    const bubbleClass = msg.is_current_user ? 'bg-primary text-white' : 'bg-light';
+                    
+                    let attachmentHtml = '';
+                    if (msg.attachment_url) {
+                        attachmentHtml = `
+                            <div class="mt-2">
+                                <a href="${msg.attachment_url}" target="_blank" class="text-decoration-underline">
+                                    <i class="fas fa-paperclip me-1"></i> ${msg.attachment_filename}
+                                </a>
+                            </div>
+                        `;
+                    }
+
+                    const messageElement = `
+                        <div class="mb-2 ${messageClass}">
+                            <div class="d-inline-block p-2 rounded ${bubbleClass}" style="max-width: 70%;">
+                                ${msg.content ? `<p class="mb-0" style="white-space: pre-wrap;">${msg.content}</p>` : ''}
+                                ${attachmentHtml}
+                                <div class="text-muted small mt-1" style="font-size: 0.75rem;">
+                                    ${formatTimestamp(msg.timestamp)} - ${msg.sender_name}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    chatBox.innerHTML += messageElement;
+                });
+                
+                if(!isInitialLoad) {
+                    // Mantém a posição do scroll se não estiver no final, para não atrapalhar a leitura
+                    const shouldScroll = chatBox.scrollTop + chatBox.clientHeight >= chatBox.scrollHeight - 50;
+                    if(shouldScroll) {
+                        scrollToBottom();
+                    }
+                } else {
+                    scrollToBottom();
+                }
+            });
+    }
+
+    fetchMessages();
+    setInterval(fetchMessages, 5000);
+
+    const chatForm = document.getElementById('chat-form');
+    chatForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const formData = new FormData(chatForm);
+        fetch(chatForm.action, {
+            method: 'POST',
+            body: formData,
+        }).then(response => {
+            chatForm.reset();
+            fetchMessages();
+        });
+    });
+});
+</script>
+{% endblock %}
