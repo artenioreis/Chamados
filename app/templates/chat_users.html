@@ -10,35 +10,91 @@
         <h1 class="mb-0"><i class="fas fa-comments me-2"></i>Conversas</h1>
     </div>
     <div class="card-body">
-        <h5 class="mt-2">Conversas Ativas</h5>
+        <h5 class="mt-2">Iniciar Nova Conversa</h5>
         <div class="list-group">
             {% for user in active_partners %}
-            <a href="{{ url_for('main.chat_conversation', recipient_id=user.id) }}" class="list-group-item list-group-item-action">
+            <a href="#" class="list-group-item list-group-item-action" data-bs-toggle="modal" data-bs-target="#startConversationModal" data-recipient-id="{{ user.id }}" data-recipient-name="{{ user.name }}">
                 {{ user.name }} ({{ user.sector }})
             </a>
             {% else %}
-            <p class="text-muted">Nenhuma conversa ativa. Clique em um usuário para começar.</p>
+            <p class="text-muted">Nenhum usuário disponível para iniciar uma conversa.</p>
             {% endfor %}
         </div>
 
-        {% if archived_partners %}
+        {% if archived_conversations %}
         <hr class="my-4">
-        <h5 class="mt-3">Conversas Arquivadas</h5>
-        <div class="list-group">
-            {% for user in archived_partners %}
-            <div class="list-group-item d-flex justify-content-between align-items-center">
-                <span>
-                    <a href="{{ url_for('main.chat_conversation', recipient_id=user.id) }}">{{ user.name }} ({{ user.sector }})</a>
-                </span>
-                <form action="{{ url_for('main.unarchive_conversation', with_user_id=user.id) }}" method="POST" class="d-inline">
-                    <button type="submit" class="btn btn-sm btn-outline-success">
-                        <i class="fas fa-box-open me-1"></i> Desarquivar
-                    </button>
-                </form>
-            </div>
-            {% endfor %}
+        <h5 class="mt-3">Histórico de Conversas (Arquivadas)</h5>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th>Assunto</th>
+                        <th>Com</th>
+                        <th>Início</th>
+                        <th>Fim</th>
+                        <th class="text-end">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for conv in archived_conversations %}
+                    {% set other_user = conv.user_a if conv.user_b_id == current_user.id else conv.user_b %}
+                    <tr>
+                        <td>{{ conv.subject }}</td>
+                        <td>{{ other_user.name }}</td>
+                        <td>{{ conv.started_at | localdatetime }}</td>
+                        <td>{{ conv.ended_at | localdatetime }}</td>
+                        <td class="text-end">
+                            <a href="{{ url_for('main.download_chat_history', log_id=conv.id) }}" class="btn btn-sm btn-outline-success">
+                                <i class="fas fa-download me-1"></i> Baixar (.txt)
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
         {% endif %}
     </div>
 </div>
+
+<div class="modal fade" id="startConversationModal" tabindex="-1" aria-labelledby="startConversationModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="startConversationModalLabel">Iniciar Conversa com <span id="modalRecipientName"></span></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="startConversationForm" method="POST" action="">
+          <div class="modal-body">
+              {{ form.hidden_tag() }}
+              <div class="mb-3">
+                  {{ form.subject.label(class="form-label") }}
+                  {{ form.subject(class="form-control", placeholder="Digite um assunto claro para a conversa") }}
+              </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            {{ form.submit(class="btn btn-primary") }}
+          </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var startModal = document.getElementById('startConversationModal');
+    startModal.addEventListener('show.bs.modal', function (event) {
+        var button = event.relatedTarget;
+        var recipientId = button.getAttribute('data-recipient-id');
+        var recipientName = button.getAttribute('data-recipient-name');
+        
+        var modalTitle = startModal.querySelector('#modalRecipientName');
+        var modalForm = startModal.querySelector('#startConversationForm');
+        
+        modalTitle.textContent = recipientName;
+        modalForm.action = '/chat/start/' + recipientId;
+    });
+});
+</script>
 {% endblock content %}

@@ -4,6 +4,11 @@ from wtforms import StringField, PasswordField, SubmitField, TextAreaField, Sele
 from wtforms.validators import DataRequired, Email, Length, EqualTo, ValidationError
 from app.models import User
 
+# NOVO FORMULÁRIO ADICIONADO
+class StartConversationForm(FlaskForm):
+    subject = StringField('Assunto da Conversa', validators=[DataRequired(), Length(min=3, max=150)])
+    submit = SubmitField('Iniciar Conversa')
+
 class LoginForm(FlaskForm):
     email = StringField('Email', validators=[DataRequired(), Email()])
     password = PasswordField('Senha', validators=[DataRequired()])

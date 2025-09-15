@@ -2,6 +2,8 @@ from app import db
 from datetime import datetime
 from flask_login import UserMixin
 
+# ... (os modelos User, Ticket, Comment, etc., continuam aqui sem alterações) ...
+
 class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
@@ -94,7 +96,6 @@ class ChatMessage(db.Model):
     def __repr__(self):
         return f'<ChatMessage {self.sender_id} to {self.recipient_id}>'
 
-# Novo modelo para arquivar conversas
 class ArchivedConversation(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
@@ -104,3 +105,29 @@ class ArchivedConversation(db.Model):
 
     def __repr__(self):
         return f'<ArchivedConversation user:{self.user_id} with:{self.with_user_id}>'
+
+class ChatCheckpoint(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    with_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    cleared_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    __table_args__ = (db.UniqueConstraint('user_id', 'with_user_id', name='_user_with_user_checkpoint_uc'),)
+
+    def __repr__(self):
+        return f'<ChatCheckpoint user:{self.user_id} with:{self.with_user_id} at {self.cleared_at}>'
+
+# NOVO MODELO PARA REGISTRAR CONVERSAS COM ASSUNTO
+class ConversationLog(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    subject = db.Column(db.String(150), nullable=False)
+    user_a_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user_b_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    started_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    ended_at = db.Column(db.DateTime, nullable=True)
+
+    user_a = db.relationship('User', foreign_keys=[user_a_id])
+    user_b = db.relationship('User', foreign_keys=[user_b_id])
+
+    def __repr__(self):
+        return f'<ConversationLog subject:{self.subject}>'

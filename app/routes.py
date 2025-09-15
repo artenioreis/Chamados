@@ -2,10 +2,11 @@ import os
 import uuid
 import shutil
 from werkzeug.utils import secure_filename
-from flask import render_template, url_for, flash, redirect, request, abort, jsonify, Blueprint, current_app, send_from_directory, session
+# A classe Response é necessária para criar o arquivo de download
+from flask import render_template, url_for, flash, redirect, request, abort, jsonify, Blueprint, current_app, send_from_directory, session, Response
 from app import db
-from app.forms import LoginForm, RegistrationForm, TicketForm, CommentForm, TicketUpdateForm, ChangePasswordForm, ChatMessageForm
-from app.models import User, Ticket, Comment, TicketHistory, ChatMessage, ArchivedConversation
+from app.forms import LoginForm, RegistrationForm, TicketForm, CommentForm, TicketUpdateForm, ChangePasswordForm, ChatMessageForm, StartConversationForm
+from app.models import User, Ticket, Comment, TicketHistory, ChatMessage, ArchivedConversation, ChatCheckpoint, ConversationLog
 from flask_login import login_user, current_user, logout_user, login_required
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy import func, or_, cast, String, not_
@@ -14,9 +15,8 @@ from datetime import datetime, timedelta
 
 main = Blueprint('main', __name__)
 
-# --- FUNÇÕES AUXILIARES ---
+# --- FUNÇÕES AUXILIARES (sem alterações) ---
 def save_attachment(form_attachment):
-    """Salva o anexo do chamado com um nome seguro e único e retorna o nome do arquivo."""
     if not form_attachment or not form_attachment.filename:
         return None
     random_hex = uuid.uuid4().hex
@@ -29,7 +29,6 @@ def save_attachment(form_attachment):
     return secure_name
 
 def save_chat_attachment(form_attachment):
-    """Salva o anexo do chat com um nome seguro e único e retorna o nome do arquivo."""
     if not form_attachment or not form_attachment.filename:
         return None
     random_hex = uuid.uuid4().hex
@@ -47,7 +46,7 @@ def is_admin():
 def is_tecnico():
     return current_user.is_authenticated and (current_user.access_level == 'tecnico' or current_user.access_level == 'administrador')
 
-# --- ROTAS PRINCIPAIS E DE USUÁRIOS ---
+# --- ROTAS PRINCIPAIS E DE USUÁRIOS (sem alterações) ---
 @main.route('/')
 @main.route('/home')
 @login_required
@@ -112,8 +111,7 @@ def register():
         return redirect(url_for('main.user_management'))
     return render_template('register.html', title='Cadastrar Usuário', form=form)
 
-
-# --- ROTAS DE CHAMADOS ---
+# --- ROTAS DE CHAMADOS (sem alterações) ---
 @main.route('/create_ticket', methods=['GET', 'POST'])
 @login_required
 def create_ticket():
@@ -234,7 +232,7 @@ def update_ticket_status(ticket_id):
             return jsonify({'success': False, 'message': 'Erro ao salvar no banco de dados.'}), 500
     return jsonify({'success': False, 'message': 'O status já é o mesmo.'})
 
-# --- ROTAS DE DASHBOARD E RELATÓRIOS ---
+# --- ROTAS DE DASHBOARD E RELATÓRIOS (sem alterações) ---
 @main.route('/dashboard')
 @login_required
 def dashboard():
@@ -276,7 +274,7 @@ def reports():
             closing_time_details.append({'id': ticket.id, 'title': ticket.title, 'author': ticket.author.name, 'duration_str': format_timedelta(duration)})
     return render_template('reports.html', title='Relatórios', tickets_per_user=tickets_per_user, average_closing_time=average_closing_time, closing_time_details=closing_time_details)
 
-# --- ROTAS DE ADMINISTRAÇÃO ---
+# --- ROTAS DE ADMINISTRAÇÃO (sem alterações) ---
 @main.route('/users', methods=['GET', 'POST'])
 @login_required
 def user_management():
@@ -320,7 +318,6 @@ def toggle_user_status(user_id):
     flash(f'O usuário {user_to_toggle.name} foi {status} com sucesso.', 'success')
     return redirect(url_for('main.user_management'))
 
-# --- ROTAS DE BACKUP ---
 @main.route('/backup', methods=['GET'])
 @login_required
 def backup():
@@ -370,7 +367,6 @@ def delete_backup(filename):
         flash(f'Erro ao excluir o backup: {e}', 'danger')
     return redirect(url_for('main.backup'))
 
-# --- ROTAS DE API E NOTIFICAÇÕES ---
 @main.route('/check_updates')
 @login_required
 def check_updates():
@@ -381,7 +377,6 @@ def check_updates():
     last_check_dt = datetime.fromisoformat(last_check_str)
     updates_payload = []
     notified_tickets = set()
-    # 1. Verificar novos chamados
     new_tickets = Ticket.query.filter(Ticket.created_at > last_check_dt).all()
     for ticket in new_tickets:
         tecnicos_do_setor = User.query.filter_by(sector=ticket.target_sector, access_level='tecnico').all()
@@ -392,7 +387,6 @@ def check_updates():
                 message = f"Novo chamado #{ticket.id}: '{ticket.title}' aberto por {ticket.author.name}."
                 updates_payload.append({'message': message, 'url': url_for('main.view_ticket', ticket_id=ticket.id)})
                 notified_tickets.add(ticket.id)
-    # 2. Verificar novos comentários
     new_comments = Comment.query.filter(Comment.created_at > last_check_dt, Comment.user_id != current_user.id).all()
     for comment in new_comments:
         ticket = comment.ticket
@@ -406,29 +400,62 @@ def check_updates():
     session['last_check_time'] = datetime.utcnow().isoformat()
     return jsonify(updates=updates_payload)
 
-# --- ROTAS DE CHAT ---
+
+# --- ROTAS DE CHAT (com a nova rota de download) ---
 @main.route('/chat', methods=['GET'])
 @login_required
 def chat_users():
+    form = StartConversationForm()
     archived_user_ids = [ac.with_user_id for ac in ArchivedConversation.query.filter_by(user_id=current_user.id).all()]
     sent_to_ids = db.session.query(ChatMessage.recipient_id).filter(ChatMessage.sender_id == current_user.id).distinct()
     received_from_ids = db.session.query(ChatMessage.sender_id).filter(ChatMessage.recipient_id == current_user.id).distinct()
     all_conversation_partner_ids = {row[0] for row in sent_to_ids}.union({row[0] for row in received_from_ids})
     active_partners = []
-    archived_partners = []
     if all_conversation_partner_ids:
         all_partners = User.query.filter(User.id.in_(all_conversation_partner_ids)).order_by(User.name).all()
         for user in all_partners:
-            if user.id in archived_user_ids:
-                archived_partners.append(user)
-            else:
+            if user.id not in archived_user_ids:
                 active_partners.append(user)
     users_with_no_history = User.query.filter(
         User.id != current_user.id,
         ~User.id.in_(all_conversation_partner_ids)
     ).order_by(User.name).all()
     active_partners.extend(users_with_no_history)
-    return render_template('chat_users.html', active_partners=active_partners, archived_partners=archived_partners, title="Chat")
+    archived_conversations = ConversationLog.query.filter(
+        or_(ConversationLog.user_a_id == current_user.id, ConversationLog.user_b_id == current_user.id),
+        ConversationLog.ended_at.isnot(None)
+    ).order_by(ConversationLog.ended_at.desc()).all()
+    return render_template('chat_users.html', 
+                           active_partners=active_partners, 
+                           archived_conversations=archived_conversations, 
+                           form=form, 
+                           title="Chat")
+
+@main.route('/chat/start/<int:recipient_id>', methods=['POST'])
+@login_required
+def start_conversation(recipient_id):
+    form = StartConversationForm()
+    if form.validate_on_submit():
+        new_log = ConversationLog(
+            subject=form.subject.data,
+            user_a_id=current_user.id,
+            user_b_id=recipient_id
+        )
+        db.session.add(new_log)
+        checkpoint = ChatCheckpoint.query.filter_by(user_id=current_user.id, with_user_id=recipient_id).first()
+        if checkpoint:
+            checkpoint.cleared_at = datetime.utcnow()
+        else:
+            checkpoint = ChatCheckpoint(user_id=current_user.id, with_user_id=recipient_id)
+            db.session.add(checkpoint)
+        archive_record = ArchivedConversation.query.filter_by(user_id=current_user.id, with_user_id=recipient_id).first()
+        if archive_record:
+            db.session.delete(archive_record)
+        db.session.commit()
+        flash(f'Conversa com o assunto "{form.subject.data}" iniciada.', 'success')
+        return redirect(url_for('main.chat_conversation', recipient_id=recipient_id))
+    flash('Ocorreu um erro ao iniciar a conversa. O assunto é obrigatório.', 'danger')
+    return redirect(url_for('main.chat_users'))
 
 @main.route('/chat/<int:recipient_id>', methods=['GET', 'POST'])
 @login_required
@@ -444,23 +471,22 @@ def chat_conversation(recipient_id):
         db.session.add(msg)
         db.session.commit()
         return redirect(url_for('main.chat_conversation', recipient_id=recipient_id))
-    messages = ChatMessage.query.filter(
-        or_(
-            (ChatMessage.sender_id == current_user.id) & (ChatMessage.recipient_id == recipient_id),
-            (ChatMessage.sender_id == recipient_id) & (ChatMessage.recipient_id == current_user.id)
-        )
-    ).order_by(ChatMessage.timestamp.asc()).all()
     return render_template('chat_conversation.html', form=form, recipient=recipient, title=f"Chat com {recipient.name}")
 
 @main.route('/api/chat/<int:recipient_id>/messages')
 @login_required
 def get_chat_messages(recipient_id):
-    messages = ChatMessage.query.filter(
+    checkpoint = ChatCheckpoint.query.filter_by(user_id=current_user.id, with_user_id=recipient_id).first()
+    since_date = checkpoint.cleared_at if checkpoint else None
+    query = ChatMessage.query.filter(
         or_(
             (ChatMessage.sender_id == current_user.id) & (ChatMessage.recipient_id == recipient_id),
             (ChatMessage.sender_id == recipient_id) & (ChatMessage.recipient_id == current_user.id)
         )
-    ).order_by(ChatMessage.timestamp.asc()).all()
+    )
+    if since_date:
+        query = query.filter(ChatMessage.timestamp > since_date)
+    messages = query.order_by(ChatMessage.timestamp.asc()).all()
     messages_data = []
     for msg in messages:
         data = {
@@ -477,12 +503,21 @@ def get_chat_messages(recipient_id):
 @main.route('/chat/archive/<int:with_user_id>', methods=['POST'])
 @login_required
 def archive_conversation(with_user_id):
+    latest_log = ConversationLog.query.filter(
+        or_(
+            (ConversationLog.user_a_id == current_user.id) & (ConversationLog.user_b_id == with_user_id),
+            (ConversationLog.user_a_id == with_user_id) & (ConversationLog.user_b_id == current_user.id)
+        ),
+        ConversationLog.ended_at.is_(None)
+    ).order_by(ConversationLog.started_at.desc()).first()
+    if latest_log:
+        latest_log.ended_at = datetime.utcnow()
     existing = ArchivedConversation.query.filter_by(user_id=current_user.id, with_user_id=with_user_id).first()
     if not existing:
         archive_record = ArchivedConversation(user_id=current_user.id, with_user_id=with_user_id)
         db.session.add(archive_record)
-        db.session.commit()
-        flash('Conversa arquivada com sucesso.', 'success')
+    db.session.commit()
+    flash('Conversa encerrada e arquivada com sucesso.', 'success')
     return redirect(url_for('main.chat_users'))
 
 @main.route('/chat/unarchive/<int:with_user_id>', methods=['POST'])
@@ -492,11 +527,70 @@ def unarchive_conversation(with_user_id):
     if archive_record:
         db.session.delete(archive_record)
         db.session.commit()
-        flash('Conversa desarquivada com sucesso.', 'success')
+        flash('Conversa desarquivada. Você pode iniciar uma nova conversa com este usuário.', 'success')
     return redirect(url_for('main.chat_users'))
 
+# NOVA ROTA PARA DOWNLOAD DO HISTÓRICO
+@main.route('/chat/download/<int:log_id>')
+@login_required
+def download_chat_history(log_id):
+    log = ConversationLog.query.get_or_404(log_id)
 
-# --- ROTAS DE AJUDA E ERRO ---
+    # Garante que o usuário atual participou da conversa
+    if current_user.id not in [log.user_a_id, log.user_b_id]:
+        abort(403)
+
+    # Busca as mensagens dentro do período da conversa
+    messages = ChatMessage.query.filter(
+        or_(
+            (ChatMessage.sender_id == log.user_a_id) & (ChatMessage.recipient_id == log.user_b_id),
+            (ChatMessage.sender_id == log.user_b_id) & (ChatMessage.recipient_id == log.user_a_id)
+        ),
+        ChatMessage.timestamp >= log.started_at,
+        ChatMessage.timestamp <= log.ended_at
+    ).order_by(ChatMessage.timestamp.asc()).all()
+
+    # Formata o conteúdo para o arquivo de texto
+    history_content = []
+    history_content.append(f"Histórico da Conversa\n")
+    history_content.append("="*30 + "\n")
+    history_content.append(f"Assunto: {log.subject}\n")
+    history_content.append(f"Participantes: {log.user_a.name} e {log.user_b.name}\n")
+    history_content.append(f"Início: {log.started_at.strftime('%d/%m/%Y %H:%M')}\n")
+    history_content.append(f"Fim: {log.ended_at.strftime('%d/%m/%Y %H:%M')}\n")
+    history_content.append("="*30 + "\n\n")
+
+    for msg in messages:
+        timestamp = msg.timestamp.strftime('%d/%m/%Y %H:%M')
+        line = f"[{timestamp}] {msg.sender.name}: {msg.content or ''}"
+        if msg.attachment_filename:
+            line += f" [Anexo: {msg.attachment_filename}]"
+        history_content.append(line + "\n")
+    
+    # Cria o nome do arquivo
+    filename = f"historico_{log.id}_{log.subject.replace(' ', '_')}.txt"
+    
+    # Retorna a resposta como um arquivo para download
+    return Response(
+        "".join(history_content),
+        mimetype="text/plain",
+        headers={"Content-disposition": f"attachment; filename={filename}"}
+    )
+
+@main.route('/chat/end/<int:with_user_id>', methods=['POST'])
+@login_required
+def end_conversation(with_user_id):
+    checkpoint = ChatCheckpoint.query.filter_by(user_id=current_user.id, with_user_id=with_user_id).first()
+    if checkpoint:
+        checkpoint.cleared_at = datetime.utcnow()
+    else:
+        checkpoint = ChatCheckpoint(user_id=current_user.id, with_user_id=with_user_id)
+        db.session.add(checkpoint)
+    db.session.commit()
+    flash('Conversa encerrada. Uma nova conversa será iniciada.', 'success')
+    return redirect(url_for('main.chat_conversation', recipient_id=with_user_id))
+    
+# --- ROTAS DE AJUDA E ERRO (sem alterações) ---
 @main.route('/help')
 @login_required
 def help():

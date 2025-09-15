@@ -3,6 +3,11 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1 class="mb-0"><i class="fas fa-comments me-2"></i>Chat com {{ recipient.name }}</h1>
     <div>
+        <form action="{{ url_for('main.end_conversation', with_user_id=recipient.id) }}" method="POST" class="d-inline">
+            <button type="submit" class="btn btn-outline-danger" title="Encerra a conversa atual e inicia uma nova. O histórico antigo fica salvo, mas não será exibido.">
+                <i class="fas fa-times-circle me-1"></i> Encerrar Conversa
+            </button>
+        </form>
         <form action="{{ url_for('main.archive_conversation', with_user_id=recipient.id) }}" method="POST" class="d-inline">
             <button type="submit" class="btn btn-outline-secondary">
                 <i class="fas fa-archive me-1"></i> Arquivar Conversa
