@@ -3,16 +3,6 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1 class="mb-0"><i class="fas fa-comments me-2"></i>Chat com {{ recipient.name }}</h1>
     <div>
-        <form action="{{ url_for('main.end_conversation', with_user_id=recipient.id) }}" method="POST" class="d-inline">
-            <button type="submit" class="btn btn-outline-danger" title="Encerra a conversa atual e inicia uma nova. O histórico antigo fica salvo, mas não será exibido.">
-                <i class="fas fa-times-circle me-1"></i> Encerrar Conversa
-            </button>
-        </form>
-        <form action="{{ url_for('main.archive_conversation', with_user_id=recipient.id) }}" method="POST" class="d-inline">
-            <button type="submit" class="btn btn-outline-secondary">
-                <i class="fas fa-archive me-1"></i> Arquivar Conversa
-            </button>
-        </form>
         <a href="{{ url_for('main.chat_users') }}" class="btn btn-outline-secondary">
             <i class="fas fa-arrow-left me-1"></i> Voltar
         </a>
@@ -20,6 +10,13 @@
 </div>
 
 <div class="card shadow-sm">
+    <div class="card-header p-2">
+        <div class="input-group">
+            <input type="text" id="messageSearch" class="form-control border-0" placeholder="Buscar nesta conversa...">
+            <button class="btn btn-light border" type="button" id="clearSearchBtn" style="display: none;"><i class="fas fa-times"></i></button>
+        </div>
+    </div>
+
     <div class="card-body" id="chat-box" style="height: 400px; overflow-y: auto; display: flex; flex-direction: column;">
         </div>
     <div class="card-footer">
@@ -28,21 +25,12 @@
             <div class="input-group mb-2">
                 {{ form.content(class="form-control", placeholder="Digite sua mensagem...", autocomplete="off", rows="1") }}
             </div>
+            <div id="form-errors" class="text-danger small mt-1 mb-2"></div>
             <div class="d-flex justify-content-between align-items-center">
                 <div>
                     {{ form.attachment(class="form-control form-control-sm") }}
-                    {% if form.attachment.errors %}
-                        <div class="text-danger small mt-1">
-                            {% for error in form.attachment.errors %}{{ error }}{% endfor %}
-                        </div>
-                    {% endif %}
-                    {% if form.content.errors %}
-                        <div class="text-danger small mt-1">
-                            {% for error in form.content.errors %}{{ error }}{% endfor %}
-                        </div>
-                    {% endif %}
                 </div>
-                {{ form.submit(class="btn btn-primary") }}
+                {{ form.submit(class="btn btn-primary", id="submit-button") }}
             </div>
         </form>
     </div>
@@ -55,9 +43,22 @@ document.addEventListener('DOMContentLoaded', function() {
     const chatBox = document.getElementById('chat-box');
     const recipientId = {{ recipient.id }};
     const notificationSound = document.getElementById('chat-notification-sound');
+    const messageSearchInput = document.getElementById('messageSearch');
+    const clearSearchBtn = document.getElementById('clearSearchBtn');
 
     let messageCount = 0;
     let isInitialLoad = true;
+    let messagesCache = [];
+
+    // --- NOVA FUNÇÃO PARA MARCAR MENSAGENS COMO LIDAS ---
+    function markMessagesAsRead() {
+        fetch(`/api/chat/${recipientId}/mark_as_read`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        }).catch(error => console.error('Erro ao marcar mensagens como lidas:', error));
+    }
 
     function scrollToBottom() {
         chatBox.scrollTop = chatBox.scrollHeight;
@@ -65,79 +66,143 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function formatTimestamp(isoString) {
         const date = new Date(isoString);
-        return date.toLocaleString('pt-BR');
+        return date.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
     }
+
+    function renderMessages(messagesToRender, searchTerm = '') {
+        chatBox.innerHTML = '';
+        if (messagesToRender.length === 0) {
+            chatBox.innerHTML = '<div class="text-center text-muted my-auto">Nenhuma mensagem encontrada.</div>';
+            return;
+        }
+
+        messagesToRender.forEach(msg => {
+            let contentHtml = msg.content ? `<div style="white-space: pre-wrap;">${msg.content}</div>` : '';
+            
+            if (searchTerm && msg.content && msg.content.toLowerCase().includes(searchTerm)) {
+                const regex = new RegExp(searchTerm, 'gi');
+                contentHtml = msg.content.replace(regex, (match) => `<mark>${match}</mark>`);
+            }
+
+            const messageClass = msg.is_current_user ? 'align-self-end' : 'align-self-start';
+            const bubbleClass = msg.is_current_user ? 'bg-primary text-white' : 'bg-light text-dark';
+            
+            let attachmentHtml = '';
+            if (msg.attachment_url) {
+                attachmentHtml = `
+                    <div class="mt-2">
+                        <a href="${msg.attachment_url}" target="_blank" class="${msg.is_current_user ? 'text-white' : 'text-dark'}" style="text-decoration: underline;">
+                            <i class="fas fa-paperclip me-1"></i> ${msg.attachment_filename}
+                        </a>
+                    </div>
+                `;
+            }
+
+            const messageElement = `
+                <div class="d-flex flex-column mb-2 message-item ${messageClass}" style="max-width: 75%;">
+                    <div class="p-2 rounded ${bubbleClass}">
+                        ${contentHtml}
+                        ${attachmentHtml}
+                    </div>
+                    <div class="small text-muted mt-1" style="font-size: 0.75rem;">
+                        ${msg.sender_name}, ${formatTimestamp(msg.timestamp)}
+                    </div>
+                </div>
+            `;
+            chatBox.innerHTML += messageElement;
+        });
+    }
+
 
     function fetchMessages() {
         fetch(`/api/chat/${recipientId}/messages`)
             .then(response => response.json())
             .then(messages => {
+                messagesCache = messages; 
+
                 if (messages.length > messageCount && !isInitialLoad) {
                     const lastMessage = messages[messages.length - 1];
                     if (lastMessage && !lastMessage.is_current_user) {
                         notificationSound.play().catch(error => console.log("A reprodução do áudio falhou:", error));
+                        markMessagesAsRead(); // Marca como lida ao receber nova mensagem
                     }
                 }
                 
+                const shouldScroll = isInitialLoad || (chatBox.scrollTop + chatBox.clientHeight >= chatBox.scrollHeight - 50);
                 messageCount = messages.length;
-                isInitialLoad = false;
 
-                chatBox.innerHTML = '';
-                messages.forEach(msg => {
-                    const messageClass = msg.is_current_user ? 'text-end' : 'text-start';
-                    const bubbleClass = msg.is_current_user ? 'bg-primary text-white' : 'bg-light';
-                    
-                    let attachmentHtml = '';
-                    if (msg.attachment_url) {
-                        attachmentHtml = `
-                            <div class="mt-2">
-                                <a href="${msg.attachment_url}" target="_blank" class="text-decoration-underline">
-                                    <i class="fas fa-paperclip me-1"></i> ${msg.attachment_filename}
-                                </a>
-                            </div>
-                        `;
-                    }
-
-                    const messageElement = `
-                        <div class="mb-2 ${messageClass}">
-                            <div class="d-inline-block p-2 rounded ${bubbleClass}" style="max-width: 70%;">
-                                ${msg.content ? `<p class="mb-0" style="white-space: pre-wrap;">${msg.content}</p>` : ''}
-                                ${attachmentHtml}
-                                <div class="text-muted small mt-1" style="font-size: 0.75rem;">
-                                    ${formatTimestamp(msg.timestamp)} - ${msg.sender_name}
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                    chatBox.innerHTML += messageElement;
-                });
+                renderMessages(messagesCache);
                 
-                if(!isInitialLoad) {
-                    // Mantém a posição do scroll se não estiver no final, para não atrapalhar a leitura
-                    const shouldScroll = chatBox.scrollTop + chatBox.clientHeight >= chatBox.scrollHeight - 50;
-                    if(shouldScroll) {
-                        scrollToBottom();
-                    }
-                } else {
+                if (shouldScroll) {
                     scrollToBottom();
                 }
+                isInitialLoad = false;
             });
     }
 
+    // --- LÓGICA PRINCIPAL ---
+    markMessagesAsRead(); // Marca como lida assim que entra na conversa
     fetchMessages();
     setInterval(fetchMessages, 5000);
 
     const chatForm = document.getElementById('chat-form');
+    const submitButton = document.getElementById('submit-button');
+    const errorDiv = document.getElementById('form-errors');
+
     chatForm.addEventListener('submit', function(e) {
         e.preventDefault();
+        submitButton.disabled = true;
+        errorDiv.textContent = '';
+
         const formData = new FormData(chatForm);
+        
         fetch(chatForm.action, {
             method: 'POST',
             body: formData,
-        }).then(response => {
-            chatForm.reset();
-            fetchMessages();
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                chatForm.reset();
+                fetchMessages();
+            } else {
+                if (data.errors && data.errors.content) {
+                    errorDiv.textContent = data.errors.content.join(', ');
+                } else {
+                    errorDiv.textContent = 'Ocorreu um erro ao enviar a mensagem.';
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            errorDiv.textContent = 'Erro de conexão. Tente novamente.';
+        })
+        .finally(() => {
+            submitButton.disabled = false;
         });
+    });
+
+    messageSearchInput.addEventListener('keyup', function() {
+        const searchTerm = messageSearchInput.value.toLowerCase().trim();
+
+        if (searchTerm) {
+            clearSearchBtn.style.display = 'block';
+            const filteredMessages = messagesCache.filter(msg => 
+                msg.content && msg.content.toLowerCase().includes(searchTerm)
+            );
+            renderMessages(filteredMessages, searchTerm);
+        } else {
+            clearSearchBtn.style.display = 'none';
+            renderMessages(messagesCache);
+        }
+    });
+
+    clearSearchBtn.addEventListener('click', function() {
+        messageSearchInput.value = '';
+        clearSearchBtn.style.display = 'none';
+        renderMessages(messagesCache);
+        scrollToBottom();
     });
 });
 </script>

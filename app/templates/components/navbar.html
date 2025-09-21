@@ -17,7 +17,12 @@
                         <a class="nav-link" href="{{ url_for('main.tickets_kanban') }}">Kanban</a>
                     </li>
                     <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('main.chat_users') }}">Chat</a>
+                        <a id="nav-chat-link" class="nav-link position-relative" href="{{ url_for('main.chat_users') }}">
+                            Chat
+                            <span id="chat-nav-indicator" class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle" style="display: none;">
+                                <span class="visually-hidden">New messages</span>
+                            </span>
+                        </a>
                     </li>
 
                     {% if current_user.access_level in ['tecnico', 'administrador'] %}

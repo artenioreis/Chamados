@@ -120,17 +120,9 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // --- LÓGICA PARA NOTIFICAÇÕES DE ATUALIZAÇÃO ---
+    // --- LÓGICA GLOBAL DE NOTIFICAÇÕES (TICKETS E CHAT) ---
     if (document.getElementById('navbarDropdown')) {
-        const updateToastEl = document.getElementById('updateToast');
-        if (!updateToastEl) return; 
-
-        const updateToast = new bootstrap.Toast(updateToastEl, { delay: 10000 });
-        const toastMessageEl = document.getElementById('toast-message');
-        const toastLinkEl = document.getElementById('toast-link');
-        const notificationSound = document.getElementById('notification-sound');
-
-        // Preferência de Som
+        // --- PREFERÊNCIAS DE SOM ---
         const toggleSoundBtn = document.getElementById('toggle-sound');
         const soundIconOn = document.getElementById('sound-icon-on');
         const soundIconOff = document.getElementById('sound-icon-off');
@@ -151,6 +143,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         if (toggleSoundBtn) {
+            updateSoundButtonUI();
             toggleSoundBtn.addEventListener('click', function(e) {
                 e.preventDefault();
                 soundEnabled = !soundEnabled;
@@ -159,33 +152,78 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
 
-        // Verificação de Atualizações
-        function checkForUpdates() {
-            fetch('/check_updates')
-                .then(response => response.ok ? response.json() : Promise.reject('A resposta da rede não foi OK'))
-                .then(data => {
-                    if (data.updates && data.updates.length > 0) {
-                        data.updates.forEach(update => {
-                            toastMessageEl.textContent = update.message;
-                            toastLinkEl.href = update.url;
-                            updateToast.show();
+        // --- NOTIFICAÇÕES DE CHAMADOS (TICKETS) ---
+        const updateToastEl = document.getElementById('updateToast');
+        if (updateToastEl) {
+            const updateToast = new bootstrap.Toast(updateToastEl, { delay: 10000 });
+            const toastMessageEl = document.getElementById('toast-message');
+            const toastLinkEl = document.getElementById('toast-link');
+            const ticketNotificationSound = document.getElementById('notification-sound');
 
-                            if (soundEnabled && notificationSound) {
-                                notificationSound.play().catch(error => console.log("A reprodução do som falhou:", error));
+            function checkForTicketUpdates() {
+                fetch('/check_updates')
+                    .then(response => response.ok ? response.json() : Promise.reject('A resposta da rede não foi OK'))
+                    .then(data => {
+                        if (data.updates && data.updates.length > 0) {
+                            data.updates.forEach(update => {
+                                toastMessageEl.textContent = update.message;
+                                toastLinkEl.href = update.url;
+                                updateToast.show();
+
+                                if (soundEnabled && ticketNotificationSound) {
+                                    ticketNotificationSound.play().catch(error => console.log("A reprodução do som falhou:", error));
+                                }
+                            });
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Erro ao verificar atualizações de chamados:', error);
+                    });
+            }
+            setInterval(checkForTicketUpdates, 15000);
+        }
+
+        // --- NOTIFICAÇÕES DE CHAT (GLOBAL) ---
+        const chatNavIndicator = document.getElementById('chat-nav-indicator');
+        const chatNotificationSound = document.getElementById('chat-notification-sound');
+        let knownUnreadSenders = new Set();
+
+        function checkUnreadChatMessages() {
+            fetch('/api/chat/unread_info')
+                .then(response => response.ok ? response.json() : Promise.reject('Resposta de rede não foi OK'))
+                .then(data => {
+                    const unreadSenders = new Set(data.unread_senders || []);
+
+                    if (unreadSenders.size > 0) {
+                        chatNavIndicator.style.display = 'block'; // Mostra o ponto vermelho no menu
+
+                        // Verifica se há um novo remetente não lido
+                        let newNotification = false;
+                        unreadSenders.forEach(senderId => {
+                            if (!knownUnreadSenders.has(senderId)) {
+                                newNotification = true;
                             }
                         });
+
+                        // Toca o som se for uma notificação de um novo remetente
+                        if (newNotification && soundEnabled && chatNotificationSound) {
+                            chatNotificationSound.play().catch(error => console.log("A reprodução do som do chat falhou:", error));
+                        }
+                    } else {
+                        chatNavIndicator.style.display = 'none'; // Esconde o ponto
                     }
+
+                    // Atualiza o conjunto de remetentes conhecidos
+                    knownUnreadSenders = unreadSenders;
                 })
                 .catch(error => {
-                    console.error('Erro ao verificar atualizações:', error);
-                    clearInterval(updateInterval); 
+                    console.error('Erro ao verificar mensagens de chat não lidas:', error);
                 });
         }
         
-        if (toggleSoundBtn) {
-            updateSoundButtonUI();
-        }
-        const updateInterval = setInterval(checkForUpdates, 15000);
+        // Verifica por novas mensagens de chat a cada 10 segundos
+        checkUnreadChatMessages();
+        setInterval(checkUnreadChatMessages, 10000);
     }
     
     // --- LÓGICA PARA IMPRIMIR RELATÓRIO ---
