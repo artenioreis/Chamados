@@ -10,3 +10,6 @@ class Config:
     
     # --- NOVA CONFIGURAÇÃO PARA BACKUP ---
     BACKUP_FOLDER = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'backups')
+    
+    # --- NOVA CONFIGURAÇÃO PARA FECHAMENTO AUTOMÁTICO ---
+    AUTO_CLOSE_DAYS = 7 # Valor padrão de 7 dias

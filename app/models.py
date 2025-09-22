@@ -48,6 +48,7 @@ class Comment(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     ticket_id = db.Column(db.Integer, db.ForeignKey('ticket.id'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    attachment_filename = db.Column(db.String(100), nullable=True)
 
     def __repr__(self):
         return f"Comment('{self.content[:20]}...', 'Ticket ID: {self.ticket_id}')"
@@ -96,3 +97,10 @@ class ChatMessage(db.Model):
 
     def __repr__(self):
         return f'<ChatMessage {self.sender_id} to {self.recipient_id}>'
+
+class SystemSettings(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    auto_close_days = db.Column(db.Integer, default=7)
+
+    def __repr__(self):
+        return f'<SystemSettings {self.id}>'

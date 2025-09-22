@@ -1,7 +1,7 @@
 from flask_wtf import FlaskForm
 from flask_wtf.file import FileField, FileAllowed
-from wtforms import StringField, PasswordField, SubmitField, TextAreaField, SelectField
-from wtforms.validators import DataRequired, Email, Length, EqualTo, ValidationError
+from wtforms import StringField, PasswordField, SubmitField, TextAreaField, SelectField, IntegerField
+from wtforms.validators import DataRequired, Email, Length, EqualTo, ValidationError, NumberRange
 from app.models import User
 
 # NOVO FORMULÁRIO ADICIONADO
@@ -18,8 +18,8 @@ class RegistrationForm(FlaskForm):
     name = StringField('Nome Completo', validators=[DataRequired(), Length(min=2, max=100)])
     email = StringField('Email', validators=[DataRequired(), Email()])
     sector = SelectField('Setor', choices=[
-        ('TI', 'TI'), ('Vendas', 'Vendas'), ('Faturamento', 'Faturamento'), 
-        ('Contas a Pagar', 'Contas a Pagar'), ('Contas a Receber', 'Contas a Receber'), 
+        ('TI', 'TI'), ('Vendas', 'Vendas'), ('Faturamento', 'Faturamento'),
+        ('Contas a Pagar', 'Contas a Pagar'), ('Contas a Receber', 'Contas a Receber'),
         ('RH', 'RH'), ('Marketing', 'Marketing'), ('Outros', 'Outros')
     ], validators=[DataRequired()])
     password = PasswordField('Senha', validators=[DataRequired(), Length(min=6)])
@@ -42,20 +42,20 @@ class TicketForm(FlaskForm):
     ])
     
     origin_sector = SelectField('Setor de Origem', choices=[
-        ('TI', 'TI'), ('Vendas', 'Vendas'), ('Faturamento', 'Faturamento'), 
-        ('Contas a Pagar', 'Contas a Pagar'), ('Contas a Receber', 'Contas a Receber'), 
+        ('TI', 'TI'), ('Vendas', 'Vendas'), ('Faturamento', 'Faturamento'),
+        ('Contas a Pagar', 'Contas a Pagar'), ('Contas a Receber', 'Contas a Receber'),
         ('RH', 'RH'), ('Marketing', 'Marketing'), ('Outros', 'Outros')
     ], validators=[DataRequired()])
     
     target_sector = SelectField('Setor de Destino', choices=[
-        ('TI', 'TI'), ('Vendas', 'Vendas'), ('Faturamento', 'Faturamento'), 
-        ('Contas a Pagar', 'Contas a Pagar'), ('Contas a Receber', 'Contas a Receber'), 
+        ('TI', 'TI'), ('Vendas', 'Vendas'), ('Faturamento', 'Faturamento'),
+        ('Contas a Pagar', 'Contas a Pagar'), ('Contas a Receber', 'Contas a Receber'),
         ('RH', 'RH'), ('Marketing', 'Marketing'), ('Outros', 'Outros')
     ], validators=[DataRequired()])
     
     priority = SelectField('Prioridade', choices=[
-        ('baixa', 'Baixa'), 
-        ('media', 'Média'), 
+        ('baixa', 'Baixa'),
+        ('media', 'Média'),
         ('alta', 'Alta')
     ], validators=[DataRequired()])
     
@@ -63,6 +63,10 @@ class TicketForm(FlaskForm):
 
 class CommentForm(FlaskForm):
     content = TextAreaField('Adicionar um novo comentário', validators=[DataRequired(), Length(min=5)])
+    attachment = FileField('Anexar Arquivo', validators=[
+        FileAllowed(['jpg', 'png', 'jpeg', 'gif', 'pdf', 'doc', 'docx', 'xls', 'xlsx', 'txt'],
+                    'Apenas imagens, PDFs, documentos e texto são permitidos!')
+    ])
     submit_comment = SubmitField('Adicionar Comentário')
 
 class TicketUpdateForm(FlaskForm):
@@ -84,7 +88,7 @@ class ChangePasswordForm(FlaskForm):
 class ChatMessageForm(FlaskForm):
     content = TextAreaField('Mensagem', validators=[Length(min=0, max=500)])
     attachment = FileField('Anexo', validators=[
-        FileAllowed(['jpg', 'png', 'jpeg', 'gif', 'pdf', 'doc', 'docx', 'xls', 'xlsx', 'txt'], 
+        FileAllowed(['jpg', 'png', 'jpeg', 'gif', 'pdf', 'doc', 'docx', 'xls', 'xlsx', 'txt'],
                     'Apenas imagens, PDFs, documentos e texto são permitidos!')
     ])
     submit = SubmitField('Enviar')
@@ -96,3 +100,7 @@ class ChatMessageForm(FlaskForm):
             self.content.errors.append('Você precisa enviar uma mensagem ou um anexo.')
             return False
         return True
+
+class SettingsForm(FlaskForm):
+    auto_close_days = IntegerField('Fechar chamados "Resolvidos" após (dias)', validators=[DataRequired(), NumberRange(min=1)])
+    submit = SubmitField('Salvar Configurações')

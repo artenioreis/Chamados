@@ -16,7 +16,6 @@
     </div>
 
     <div class="row">
-        <!-- Coluna de Informações do Chamado -->
         <div class="col-md-8">
             <div class="card shadow-sm mb-4">
                 <div class="card-header bg-light">
@@ -25,9 +24,6 @@
                 <div class="card-body">
                     <p class="card-text" style="white-space: pre-wrap;">{{ ticket.description }}</p>
 
-                    <!-- ======================================================= -->
-                    <!--     SEÇÃO DO ANEXO - CÓDIGO VERIFICADO E CORRIGIDO      -->
-                    <!-- ======================================================= -->
                     {% if ticket.attachment_filename %}
                         <hr>
                         <h6>Anexo:</h6>
@@ -38,10 +34,6 @@
                                  alt="Anexo do Chamado">
                         </a>
                     {% endif %}
-                    <!-- ======================================================= -->
-                    <!--                FIM DA SEÇÃO DO ANEXO                  -->
-                    <!-- ======================================================= -->
-
                     <hr>
                     <div class="row">
                         <div class="col-sm-4"><strong>Prioridade:</strong> 
@@ -55,7 +47,6 @@
                 </div>
             </div>
 
-            <!-- ... (resto do template, como a seção de comentários, permanece igual) ... -->
             <div class="card shadow-sm mb-4">
                 <div class="card-header"><h5 class="mb-0">Comentários</h5></div>
                 <div class="card-body">
@@ -65,6 +56,13 @@
                             <div class="flex-grow-1">
                                 <strong>{{ comment.comment_author.name }}</strong> <small class="text-muted ms-2">{{ comment.created_at | localdatetime }}</small>
                                 <p class="mb-0" style="white-space: pre-wrap;">{{ comment.content }}</p>
+                                {% if comment.attachment_filename %}
+                                    <div class="mt-2">
+                                        <a href="{{ url_for('static', filename='uploads/' + comment.attachment_filename) }}" target="_blank">
+                                            <i class="fas fa-paperclip"></i> Ver Anexo
+                                        </a>
+                                    </div>
+                                {% endif %}
                             </div>
                         </div>
                         {% if not loop.last %}<hr>{% endif %}
@@ -73,11 +71,15 @@
                     {% endfor %}
                 </div>
                 <div class="card-footer">
-                    <form method="POST" action="">
+                    <form method="POST" action="" enctype="multipart/form-data">
                         {{ comment_form.hidden_tag() }}
                         <div class="mb-3">
                             {{ comment_form.content.label(class="form-label") }}
                             {{ comment_form.content(class="form-control", rows=3) }}
+                        </div>
+                        <div class="mb-3">
+                            {{ comment_form.attachment.label(class="form-label") }}
+                            {{ comment_form.attachment(class="form-control") }}
                         </div>
                         {{ comment_form.submit_comment(class="btn btn-primary") }}
                     </form>
@@ -85,9 +87,7 @@
             </div>
         </div>
 
-        <!-- Coluna de Ações e Histórico -->
         <div class="col-md-4">
-            <!-- ... (resto da coluna, sem alterações) ... -->
-        </div>
+            </div>
     </div>
 {% endblock content %}

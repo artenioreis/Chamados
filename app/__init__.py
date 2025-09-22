@@ -78,6 +78,13 @@ def create_app():
             db.session.commit()
             print("Usuário administrador padrão criado!")
 
+        # Cria as configurações padrão do sistema na primeira execução
+        if not models.SystemSettings.query.first():
+            settings = models.SystemSettings()
+            db.session.add(settings)
+            db.session.commit()
+            print("Configurações padrão do sistema criadas!")
+
     return app
 
 @login_manager.user_loader

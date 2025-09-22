@@ -4,8 +4,8 @@ import shutil
 from werkzeug.utils import secure_filename
 from flask import render_template, url_for, flash, redirect, request, abort, jsonify, Blueprint, current_app, send_from_directory, session, Response
 from app import db
-from app.forms import LoginForm, RegistrationForm, TicketForm, CommentForm, TicketUpdateForm, ChangePasswordForm, ChatMessageForm
-from app.models import User, Ticket, Comment, TicketHistory, ChatMessage
+from app.forms import LoginForm, RegistrationForm, TicketForm, CommentForm, TicketUpdateForm, ChangePasswordForm, ChatMessageForm, SettingsForm
+from app.models import User, Ticket, Comment, TicketHistory, ChatMessage, SystemSettings
 from flask_login import login_user, current_user, logout_user, login_required
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy import func, or_, cast, String, not_, and_
@@ -176,7 +176,11 @@ def view_ticket(ticket_id):
             flash('Chamado atualizado com sucesso!', 'success')
             return redirect(url_for('main.view_ticket', ticket_id=ticket.id))
         if comment_form.submit_comment.data and comment_form.validate():
-            comment = Comment(content=comment_form.content.data, user_id=current_user.id, ticket_id=ticket.id)
+            attachment_filename = save_attachment(comment_form.attachment.data)
+            comment = Comment(content=comment_form.content.data, 
+                              user_id=current_user.id, 
+                              ticket_id=ticket.id,
+                              attachment_filename=attachment_filename)
             db.session.add(comment)
             db.session.commit()
             flash('Comentário adicionado!', 'success')
@@ -365,6 +369,26 @@ def delete_backup(filename):
     except Exception as e:
         flash(f'Erro ao excluir o backup: {e}', 'danger')
     return redirect(url_for('main.backup'))
+
+@main.route('/settings', methods=['GET', 'POST'])
+@login_required
+def settings():
+    if not is_admin():
+        abort(403)
+    form = SettingsForm()
+    settings = SystemSettings.query.first()
+    if not settings:
+        settings = SystemSettings()
+        db.session.add(settings)
+        db.session.commit()
+    if form.validate_on_submit():
+        settings.auto_close_days = form.auto_close_days.data
+        db.session.commit()
+        flash('Configurações salvas com sucesso!', 'success')
+        return redirect(url_for('main.settings'))
+    elif request.method == 'GET':
+        form.auto_close_days.data = settings.auto_close_days
+    return render_template('settings.html', title='Configurações', form=form)
 
 @main.route('/check_updates')
 @login_required
