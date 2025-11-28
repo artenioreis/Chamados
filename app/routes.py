@@ -14,6 +14,12 @@ from datetime import datetime, timedelta
 
 main = Blueprint('main', __name__)
 
+# --- CONTEXT PROCESSOR (Disponibiliza configurações globais nos templates) ---
+@main.context_processor
+def inject_system_settings():
+    settings = SystemSettings.query.first()
+    return dict(system_settings=settings)
+
 # --- FUNÇÕES AUXILIARES ---
 def save_attachment(form_attachment):
     if not form_attachment or not form_attachment.filename:
@@ -37,6 +43,20 @@ def save_chat_attachment(form_attachment):
     os.makedirs(upload_path, exist_ok=True)
     file_path = os.path.join(upload_path, secure_name)
     form_attachment.save(file_path)
+    return secure_name
+
+# --- NOVA FUNÇÃO PARA SALVAR LOGO ---
+def save_logo(form_logo):
+    if not form_logo or not form_logo.filename:
+        return None
+    random_hex = uuid.uuid4().hex
+    _, f_ext = os.path.splitext(form_logo.filename)
+    secure_name = secure_filename(f"logo_{random_hex}{f_ext}")
+    # Salva na pasta padrão de uploads
+    upload_path = current_app.config['UPLOAD_FOLDER']
+    os.makedirs(upload_path, exist_ok=True)
+    file_path = os.path.join(upload_path, secure_name)
+    form_logo.save(file_path)
     return secure_name
 
 def is_admin():
@@ -381,13 +401,23 @@ def settings():
         settings = SystemSettings()
         db.session.add(settings)
         db.session.commit()
+        
     if form.validate_on_submit():
         settings.auto_close_days = form.auto_close_days.data
+        
+        # --- LÓGICA DE SALVAR LOGO ---
+        if form.logo.data:
+            logo_filename = save_logo(form.logo.data)
+            if logo_filename:
+                settings.logo_filename = logo_filename
+                
         db.session.commit()
         flash('Configurações salvas com sucesso!', 'success')
         return redirect(url_for('main.settings'))
+        
     elif request.method == 'GET':
         form.auto_close_days.data = settings.auto_close_days
+        
     return render_template('settings.html', title='Configurações', form=form)
 
 @main.route('/check_updates')

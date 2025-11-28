@@ -2,7 +2,7 @@
 {% block content %}
 <div class="row justify-content-start mt-4">
     <div class="col-12 text-start mb-3">
-        <img src="https://neosul.com.br/clientes/1/img/logo.png" alt="Logo Neosul" style="max-width: 250px; height: auto;">
+        <img src="{% if system_settings and system_settings.logo_filename %}{{ url_for('static', filename='uploads/' + system_settings.logo_filename) }}{% else %}https://neosul.com.br/clientes/1/img/logo.png{% endif %}" alt="Logo do Sistema" style="max-width: 250px; height: auto;">
     </div>
 </div>
     <div class="row justify-content-center mt-5">
@@ -12,7 +12,7 @@
                     <h3 class="mb-0"><i class="fas fa-cog me-2"></i>Configurações do Sistema</h3>
                 </div>
                 <div class="card-body">
-                    <form method="POST" action="">
+                    <form method="POST" action="" enctype="multipart/form-data">
                         {{ form.hidden_tag() }}
                         
                         <div class="mb-3">
@@ -21,6 +21,21 @@
                             {% if form.auto_close_days.errors %}
                                 <div class="invalid-feedback d-block">
                                     {% for error in form.auto_close_days.errors %}
+                                        <span>{{ error }}</span>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <hr>
+                        
+                        <div class="mb-3">
+                            {{ form.logo.label(class="form-label") }}
+                            {{ form.logo(class="form-control") }}
+                            <div class="form-text">Formatos permitidos: jpg, png, gif, svg.</div>
+                            {% if form.logo.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.logo.errors %}
                                         <span>{{ error }}</span>
                                     {% endfor %}
                                 </div>

@@ -3,7 +3,7 @@
 <div class="row justify-content-start mt-4">
     <div class="col-12 text-start mb-3">
         <!-- Logo carregada de URL externa -->
-        <img src="https://neosul.com.br/clientes/1/img/logo.png" alt="Logo Neosul" style="max-width: 250px; height: auto;">
+       <img src="{% if system_settings and system_settings.logo_filename %}{{ url_for('static', filename='uploads/' + system_settings.logo_filename) }}{% else %}https://neosul.com.br/clientes/1/img/logo.png{% endif %}" alt="Logo" style="max-width: 250px; height: auto;">
     </div>
 </div>
     <div class="row justify-content-center mt-5">

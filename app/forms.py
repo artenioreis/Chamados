@@ -103,4 +103,8 @@ class ChatMessageForm(FlaskForm):
 
 class SettingsForm(FlaskForm):
     auto_close_days = IntegerField('Fechar chamados "Resolvidos" após (dias)', validators=[DataRequired(), NumberRange(min=1)])
+    # --- CAMPO NOVO PARA UPLOAD DA LOGO ---
+    logo = FileField('Logo do Sistema', validators=[
+        FileAllowed(['jpg', 'png', 'jpeg', 'gif', 'svg'], 'Apenas imagens (jpg, png, gif, svg) são permitidas!')
+    ])
     submit = SubmitField('Salvar Configurações')

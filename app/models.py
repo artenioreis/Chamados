@@ -101,6 +101,8 @@ class ChatMessage(db.Model):
 class SystemSettings(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     auto_close_days = db.Column(db.Integer, default=7)
+    # --- CAMPO NOVO PARA LOGO ---
+    logo_filename = db.Column(db.String(100), nullable=True)
 
     def __repr__(self):
         return f'<SystemSettings {self.id}>'
