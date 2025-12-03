@@ -1,22 +1,38 @@
 document.addEventListener('DOMContentLoaded', function() {
     
     // --- LÓGICA DOS GRÁFICOS (DASHBOARD) ---
+    // Alterado de PIE para BAR (Colunas)
     const statusCtx = document.getElementById('statusChart');
     if (statusCtx) {
         const statusData = JSON.parse(statusCtx.dataset.chartdata);
         new Chart(statusCtx, {
-            type: 'pie',
+            type: 'bar', // Mudado para barras (colunas)
             data: {
                 labels: statusData.map(d => d.status),
                 datasets: [{
+                    label: 'Quantidade',
                     data: statusData.map(d => d.count),
-                    backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF']
+                    backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF'],
+                    borderWidth: 1
                 }]
             },
-            options: { responsive: true, plugins: { title: { display: true, text: 'Chamados por Status' } } }
+            options: { 
+                responsive: true, 
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { stepSize: 1 } // Garante números inteiros no eixo Y
+                    }
+                },
+                plugins: { 
+                    legend: { display: false }, // Remove legenda pois as barras já têm labels embaixo
+                    title: { display: true, text: 'Distribuição por Status' } 
+                } 
+            }
         });
     }
 
+    // Mantido BAR, ajustado escalas
     const sectorCtx = document.getElementById('sectorChart');
     if (sectorCtx) {
         const sectorData = JSON.parse(sectorCtx.dataset.chartdata);
@@ -25,28 +41,56 @@ document.addEventListener('DOMContentLoaded', function() {
             data: {
                 labels: sectorData.map(d => d.sector),
                 datasets: [{
-                    label: 'Chamados por Setor',
+                    label: 'Chamados',
                     data: sectorData.map(d => d.count),
-                    backgroundColor: '#36A2EB'
+                    backgroundColor: '#36A2EB',
+                    borderWidth: 1
                 }]
             },
-            options: { responsive: true, scales: { y: { beginAtZero: true } }, plugins: { title: { display: true, text: 'Chamados por Setor de Destino' } } }
+            options: { 
+                responsive: true, 
+                scales: { 
+                    y: { 
+                        beginAtZero: true,
+                        ticks: { stepSize: 1 }
+                    } 
+                }, 
+                plugins: { 
+                    legend: { display: false },
+                    title: { display: true, text: 'Volume por Setor' } 
+                } 
+            }
         });
     }
 
+    // Alterado de DOUGHNUT para BAR (Colunas)
     const priorityCtx = document.getElementById('priorityChart');
     if (priorityCtx) {
         const priorityData = JSON.parse(priorityCtx.dataset.chartdata);
         new Chart(priorityCtx, {
-            type: 'doughnut',
+            type: 'bar', // Mudado para barras
             data: {
                 labels: priorityData.map(d => d.priority),
                 datasets: [{
+                    label: 'Quantidade',
                     data: priorityData.map(d => d.count),
-                    backgroundColor: ['#FFCE56', '#36A2EB', '#FF6384']
+                    backgroundColor: ['#FFCE56', '#36A2EB', '#FF6384'], // Cores mantidas para identificar prioridade
+                    borderWidth: 1
                 }]
             },
-            options: { responsive: true, plugins: { title: { display: true, text: 'Chamados por Prioridade' } } }
+            options: { 
+                responsive: true, 
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { stepSize: 1 }
+                    }
+                },
+                plugins: { 
+                    legend: { display: false },
+                    title: { display: true, text: 'Frequência por Prioridade' } 
+                } 
+            }
         });
     }
 

@@ -2,40 +2,50 @@
 {% block content %}
 <div class="row justify-content-start mt-4">
     <div class="col-12 text-start mb-3">
-        <!-- Logo carregada de URL externa -->
-       <img src="{% if system_settings and system_settings.logo_filename %}{{ url_for('static', filename='uploads/' + system_settings.logo_filename) }}{% else %}https://neosul.com.br/clientes/1/img/logo.png{% endif %}" alt="Logo" style="max-width: 250px; height: auto;">
+        <img src="{% if system_settings and system_settings.logo_filename %}{{ url_for('static', filename='uploads/' + system_settings.logo_filename) }}{% else %}https://neosul.com.br/clientes/1/img/logo.png{% endif %}" alt="Logo" style="max-width: 250px; height: auto;">
     </div>
 </div>
     <h1 class="mb-4"><i class="fas fa-chart-line me-2"></i>Dashboard do Sistema de Chamados</h1>
 
-    <div class="card text-center mb-4 shadow-sm">
-        <div class="card-body">
-            <h5 class="card-title">Total de Chamados Abertos</h5>
-            <p class="card-text fs-2 fw-bold text-primary">{{ total_tickets }}</p>
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card text-center shadow-sm border-primary">
+                <div class="card-body py-3">
+                    <h6 class="card-title text-muted">Total de Chamados Abertos</h6>
+                    <p class="card-text fs-3 fw-bold text-primary mb-0">{{ total_tickets }}</p>
+                </div>
+            </div>
         </div>
     </div>
 
     <div class="row">
-        <div class="col-md-6 mb-4">
+        <div class="col-lg-4 col-md-6 mb-4">
             <div class="card shadow-sm h-100">
-                <div class="card-header bg-primary text-white">Chamados por Status</div>
+                <div class="card-header bg-primary text-white py-2">
+                    <h6 class="mb-0 small">Chamados por Status</h6>
+                </div>
                 <div class="card-body">
                     <canvas id="statusChart" data-chartdata="{{ status_data }}"></canvas>
                 </div>
             </div>
         </div>
-        <div class="col-md-6 mb-4">
+
+        <div class="col-lg-4 col-md-6 mb-4">
             <div class="card shadow-sm h-100">
-                <div class="card-header bg-success text-white">Chamados por Setor de Destino</div>
+                <div class="card-header bg-success text-white py-2">
+                    <h6 class="mb-0 small">Chamados por Setor de Destino</h6>
+                </div>
                 <div class="card-body">
                     <canvas id="sectorChart" data-chartdata="{{ sector_data }}"></canvas>
                 </div>
             </div>
         </div>
-        <div class="col-md-6 mb-4">
-            {# Este gráfico de prioridade ocupa apenas meia largura #}
+
+        <div class="col-lg-4 col-md-6 mb-4">
             <div class="card shadow-sm h-100">
-                <div class="card-header bg-warning text-dark">Chamados por Prioridade</div>
+                <div class="card-header bg-warning text-dark py-2">
+                    <h6 class="mb-0 small">Chamados por Prioridade</h6>
+                </div>
                 <div class="card-body">
                     <canvas id="priorityChart" data-chartdata="{{ priority_data }}"></canvas>
                 </div>
