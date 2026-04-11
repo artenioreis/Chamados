@@ -1,99 +1,177 @@
-/* Você pode adicionar estilos customizados aqui se não usar Tailwind ou quiser complementar */
-/* Este arquivo seria mais relevante se estivéssemos usando um CSS mais tradicional.
-   Com TailwindCSS, a maior parte do estilo é aplicada diretamente nos templates. */
-
-/* Exemplo de estilo para o Kanban */
+/* --- SISTEMA DE DESIGN PREMIUM v2.0 --- */
 :root {
-    --primary-color: #4361ee;
-    --secondary-color: #3f37c9;
-    --success-color: #4cc9f0;
-    --info-color: #4895ef;
-    --warning-color: #f72585;
-    --light-bg: #f8f9fa;
-    --card-shadow: 0 10px 20px rgba(0, 0, 0, 0.05);
-    --transition-speed: 0.3s;
+    /* Cores Principais - Paleta Profissional 2025 */
+    --primary: #4361ee;
+    --primary-hover: #3a56d4;
+    --secondary: #7209b7;
+    --accent: #4cc9f0;
+    --success: #06d6a0;
+    --warning: #ffd166;
+    --danger: #ef476f;
+    --info: #118ab2;
+    
+    /* Tons Neutros */
+    --bg-main: #f8f9fc;
+    --bg-white: #ffffff;
+    --text-main: #2b2d42;
+    --text-muted: #8d99ae;
+    --border-color: #edf2f4;
+    
+    /* Efeitos e Elevação */
+    --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+    --card-shadow-hover: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.02);
+    --glass-bg: rgba(255, 255, 255, 0.7);
+    --glass-border: rgba(255, 255, 255, 0.4);
+    
+    /* Layout */
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 18px;
+    --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Kanban */
-.kanban-column {
-    flex: 0 0 300px;
-    margin-right: 1.5rem;
-    max-width: 90vw; /* Garante que não ultrapasse a tela em mobile */
-}
-
-.kanban-card {
-    cursor: grab;
-}
-/* Estilos para o Kanban Drag-and-Drop */
-
-.kanban-column {
-    flex: 0 0 300px;
-    max-width: 90vw;
-    flex-shrink: 0;
-}
-
-.kanban-card {
-    cursor: grab; /* Muda o cursor para indicar que o item é arrastável */
-}
-
-/* Estilo para o item "fantasma" (o espaço reservado onde o card pode ser solto) */
-.sortable-ghost {
-    opacity: 0.4;
-    background-color: #cce5ff; /* Um azul claro */
-    border: 2px dashed #007bff;
-}
-
-/* Estilo para o item que está sendo arrastado */
-.sortable-drag {
-    opacity: 0.9;
-    transform: rotate(3deg); /* Inclina um pouco o card ao arrastar */
-    box-shadow: 0 10px 20px rgba(0,0,0,0.2);
-}
-
-/* Opção 1: Background com Gradiente Suave */
+/* --- RESET & GLOBAL --- */
 body {
-    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    background: radial-gradient(circle at top right, #fdfcfb 0%, #e2d1c3 100%);
+    background: linear-gradient(135deg, #f5f7fa 0%, #d6e0f0 100%);
     background-attachment: fixed;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--text-main);
+    font-family: 'Inter', sans-serif;
+    line-height: 1.6;
 }
 
+/* --- GLASSMORPHISM --- */
+.glass-container {
+    background: var(--glass-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-lg);
+}
+
+.glass-navbar {
+    background: rgba(43, 45, 66, 0.85); /* Dark semi-transparent */
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* --- CARDS MODERNOS --- */
 .card {
-    border: none;
-    border-radius: 12px;
+    background: var(--bg-white);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
     box-shadow: var(--card-shadow);
-    transition: transform var(--transition-speed), box-shadow var(--transition-speed);
+    transition: var(--transition);
+    overflow: hidden;
 }
 
 .card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+    transform: translateY(-4px);
+    box-shadow: var(--card-shadow-hover);
 }
 
-/* --- ESTILO ADICIONADO PARA O POP-UP --- */
-/* Estilos para Notificações (Toasts) */
-.toast {
-    max-width: 90vw; /* Responsivo em mobile */
-    min-width: 300px;
-    border-radius: 12px;
+.card-header {
+    background: transparent;
+    border-bottom: 1px solid var(--border-color);
+    padding: 1.25rem 1.5rem;
+    font-weight: 600;
 }
-/* --- FIM DO ESTILO ADICIONADO --- */
 
+/* --- DASHBOARD BENTO GRID --- */
+.dashboard-grid {
+    display: grid;
+    gap: 1.5rem;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
 
-/* Estilos de Impressão */
-@media print {
-    .no-print, .navbar {
-        display: none !important;
+.metric-card {
+    position: relative;
+    padding: 1.5rem;
+}
+
+.metric-card i {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    font-size: 2rem;
+    opacity: 0.1;
+    color: var(--primary);
+}
+
+/* --- KANBAN REFINADO --- */
+.kanban-column {
+    background: rgba(255, 255, 255, 0.5);
+    border-radius: var(--radius-lg);
+    padding: 0.75rem;
+    min-width: 310px;
+    max-width: 310px;
+}
+
+.kanban-column-body {
+    min-height: 500px;
+}
+
+.kanban-card {
+    background: var(--bg-white);
+    border-radius: var(--radius-md);
+    padding: 1rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    border-left: 4px solid var(--primary);
+}
+
+/* --- BOTÕES PREMIUM --- */
+.btn {
+    border-radius: var(--radius-sm);
+    padding: 0.6rem 1.5rem;
+    font-weight: 500;
+    transition: var(--transition);
+}
+
+.btn-primary {
+    background-color: var(--primary);
+    border-color: var(--primary);
+    box-shadow: 0 4px 14px 0 rgba(67, 97, 238, 0.3);
+}
+
+.btn-primary:hover {
+    background-color: var(--primary-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(67, 97, 238, 0.4);
+}
+
+/* --- ANIMAÇÕES --- */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
     }
 }
-.brand-logo {
-    max-width: 100%;
-    width: 250px;
-    height: auto;
-    margin-bottom: 1.5rem;
+
+.animate-fade-in {
+    animation: fadeInUp 0.5s ease forwards;
 }
 
-.navbar-nav .nav-link {
-    white-space: nowrap;
-    padding-left: 0.75rem;
-    padding-right: 0.75rem;
+/* --- LOGO --- */
+.brand-logo {
+    max-height: 50px;
+    width: auto;
+    transition: var(--transition);
+}
+
+.brand-logo:hover {
+    transform: scale(1.05);
+}
+
+/* Utilitários Extras */
+.text-gradient {
+    background: linear-gradient(90deg, var(--primary), var(--secondary));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
 }

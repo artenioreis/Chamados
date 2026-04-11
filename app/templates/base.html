@@ -19,11 +19,11 @@
     
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
-<body class="bg-light">
+<body class="">
     
     {% include 'components/navbar.html' %}
     
-    <main role="main" class="container mt-4">
+    <main role="main" class="container-xl mt-4 animate-fade-in">
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}

@@ -1,51 +1,57 @@
 {% extends "base.html" %}
 {% block content %}
-    <div class="row justify-content-center mt-4">
-        <div class="col-12 text-center mb-3">
-            <img src="{% if system_settings and system_settings.logo_filename %}{{ url_for('static', filename='uploads/' + system_settings.logo_filename) }}{% else %}https://neosul.com.br/clientes/1/img/logo.png{% endif %}" alt="Logo" class="brand-logo">
-        </div>
-    </div>
+<div class="row justify-content-center align-items-center min-vh-100 animate-fade-in" style="margin-top: -50px;">
+    <div class="col-md-5 col-lg-4">
+        <div class="card border-0 shadow-lg glass-container p-4">
+            <div class="text-center mb-4">
+                <img src="{% if system_settings and system_settings.logo_filename %}{{ url_for('static', filename='uploads/' + system_settings.logo_filename) }}{% else %}https://neosul.com.br/clientes/1/img/logo.png{% endif %}" alt="Logo" class="brand-logo mb-3" style="max-height: 100px; width: auto;">
+                <h2 class="fw-bold text-gradient">Bem-vindo</h2>
+                <p class="text-muted">Acesse sua conta para gerenciar chamados</p>
+            </div>
 
-    <div class="row justify-content-center">
-        <div class="col-md-6 col-lg-4">
-            <div class="card shadow-sm">
-                <div class="card-header text-center bg-primary text-white">
-                    <h3 class="mb-0">Login</h3>
-                </div>
-                <div class="card-body">
-                    <form method="POST" action="">
-                        {{ form.hidden_tag() }} {# Inclui CSRF token #}
-                        <div class="mb-3">
-                            {{ form.email.label(class="form-label") }}
-                            {{ form.email(class="form-control", placeholder="seu.email@empresa.com") }}
-                            {% if form.email.errors %}
-                                <div class="invalid-feedback d-block">
-                                    {% for error in form.email.errors %}
-                                        <span>{{ error }}</span>
-                                    {% endfor %}
-                                </div>
-                            {% endif %}
+            <form method="POST" action="">
+                {{ form.hidden_tag() }}
+                
+                <div class="mb-3">
+                    <label class="form-label small fw-bold text-muted">E-mail Corporativo</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light border-end-0 text-muted"><i class="fas fa-envelope"></i></span>
+                        {{ form.email(class="form-control bg-light border-start-0", placeholder="ex: jose@empresa.com") }}
+                    </div>
+                    {% if form.email.errors %}
+                        <div class="text-danger small mt-1">
+                            {% for error in form.email.errors %}<span>{{ error }}</span>{% endfor %}
                         </div>
-                        <div class="mb-3">
-                            {{ form.password.label(class="form-label") }}
-                            {{ form.password(class="form-control", placeholder="Sua senha") }}
-                            {% if form.password.errors %}
-                                <div class="invalid-feedback d-block">
-                                    {% for error in form.password.errors %}
-                                        <span>{{ error }}</span>
-                                    {% endfor %}
-                                </div>
-                            {% endif %}
-                        </div>
-                        <div class="d-grid gap-2">
-                            {{ form.submit(class="btn btn-primary") }}
-                        </div>
-                    </form>
+                    {% endif %}
                 </div>
-                <div class="card-footer text-center text-muted">
-                    Não tem uma conta? Peça ao administrador para cadastrar você.
+
+                <div class="mb-4">
+                    <label class="form-label small fw-bold text-muted">Senha de Acesso</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light border-end-0 text-muted"><i class="fas fa-lock"></i></span>
+                        {{ form.password(class="form-control bg-light border-start-0", placeholder="••••••••") }}
+                    </div>
+                    {% if form.password.errors %}
+                        <div class="text-danger small mt-1">
+                            {% for error in form.password.errors %}<span>{{ error }}</span>{% endfor %}
+                        </div>
+                    {% endif %}
                 </div>
+
+                <div class="d-grid gap-2 mb-3">
+                    {{ form.submit(class="btn btn-primary btn-lg shadow-sm") }}
+                </div>
+            </form>
+
+            <div class="text-center mt-3">
+                <p class="small text-muted mb-0">Problemas com o acesso?</p>
+                <a href="mailto:suporte@empresa.com" class="small text-primary fw-bold text-decoration-none">Contate o administrador</a>
             </div>
         </div>
+        
+        <div class="text-center mt-4">
+            <p class="text-muted small">&copy; 2025 Sistema de Chamados. Todos os direitos reservados.</p>
+        </div>
     </div>
-{% endblock content %}
+</div>
+{% endblock content %}

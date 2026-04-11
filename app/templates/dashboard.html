@@ -1,55 +1,54 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="row justify-content-start mt-4">
-    <div class="col-12 text-start mb-3">
-        <img src="{% if system_settings and system_settings.logo_filename %}{{ url_for('static', filename='uploads/' + system_settings.logo_filename) }}{% else %}https://neosul.com.br/clientes/1/img/logo.png{% endif %}" alt="Logo" class="brand-logo">
-    </div>
-</div>
-    <h1 class="mb-4"><i class="fas fa-chart-line me-2"></i>Dashboard do Sistema de Chamados</h1>
-
-    <div class="row mb-4">
-        <div class="col-12 col-sm-6 col-md-4 mb-3">
-            <div class="card text-center shadow-sm border-primary">
-                <div class="card-body py-3">
-                    <h6 class="card-title text-muted">Total de Chamados Abertos</h6>
-                    <p class="card-text fs-3 fw-bold text-primary mb-0">{{ total_tickets }}</p>
-                </div>
-            </div>
+    <div class="row align-items-center mb-5 mt-4">
+        <div class="col-md-8">
+            <h1 class="display-5 fw-bold text-gradient mb-2">Painel de Controle</h1>
+            <p class="text-muted fs-5">Insights em tempo real do seu sistema de suporte.</p>
+        </div>
+        <div class="col-md-4 text-md-end d-none d-md-block">
+            <img src="{% if system_settings and system_settings.logo_filename %}{{ url_for('static', filename='uploads/' + system_settings.logo_filename) }}{% else %}https://neosul.com.br/clientes/1/img/logo.png{% endif %}" alt="Logo" class="brand-logo mb-0">
         </div>
     </div>
 
-    <div class="row">
-        <div class="col-12 col-md-6 col-lg-4 mb-4">
-            <div class="card shadow-sm h-100">
-                <div class="card-header bg-primary text-white py-2">
-                    <h6 class="mb-0 small">Chamados por Status</h6>
-                </div>
-                <div class="card-body">
-                    <canvas id="statusChart" data-chartdata="{{ status_data }}"></canvas>
-                </div>
+    <div class="dashboard-grid">
+        <!-- KPI Principal -->
+        <div class="card metric-card animate-fade-in" style="grid-column: span 1;">
+            <i class="fas fa-ticket-alt"></i>
+            <h6 class="text-muted text-uppercase small fw-bold">Chamados Totais</h6>
+            <h2 class="display-4 fw-bold mb-0">{{ total_tickets }}</h2>
+            <div class="mt-2">
+                <span class="badge bg-soft-primary text-primary">Ativos agora</span>
             </div>
         </div>
 
-        <div class="col-12 col-md-6 col-lg-4 mb-4">
-            <div class="card shadow-sm h-100">
-                <div class="card-header bg-success text-white py-2">
-                    <h6 class="mb-0 small">Chamados por Setor de Destino</h6>
-                </div>
-                <div class="card-body">
-                    <canvas id="sectorChart" data-chartdata="{{ sector_data }}"></canvas>
-                </div>
+        <!-- Gráfico de Status -->
+        <div class="card p-3 shadow-sm animate-fade-in" style="grid-column: span 2;">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="mb-0 fw-bold"><i class="fas fa-tasks me-2 text-primary"></i>Distribuição por Status</h6>
+            </div>
+            <div style="height: 250px;">
+                <canvas id="statusChart" data-chartdata="{{ status_data }}"></canvas>
             </div>
         </div>
 
-        <div class="col-12 col-md-6 col-lg-4 mb-4">
-            <div class="card shadow-sm h-100">
-                <div class="card-header bg-warning text-dark py-2">
-                    <h6 class="mb-0 small">Chamados por Prioridade</h6>
-                </div>
-                <div class="card-body">
-                    <canvas id="priorityChart" data-chartdata="{{ priority_data }}"></canvas>
-                </div>
+        <!-- Gráfico de Setor -->
+        <div class="card p-3 shadow-sm animate-fade-in" style="grid-column: span 1;">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="mb-0 fw-bold"><i class="fas fa-building me-2 text-success"></i>Por Setor</h6>
+            </div>
+            <div style="height: 250px;">
+                <canvas id="sectorChart" data-chartdata="{{ sector_data }}"></canvas>
+            </div>
+        </div>
+
+        <!-- Gráfico de Prioridade -->
+        <div class="card p-3 shadow-sm animate-fade-in" style="grid-column: span 2;">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="mb-0 fw-bold"><i class="fas fa-exclamation-triangle me-2 text-warning"></i>Nível de Prioridade</h6>
+            </div>
+            <div style="height: 250px;">
+                <canvas id="priorityChart" data-chartdata="{{ priority_data }}"></canvas>
             </div>
         </div>
     </div>
-{% endblock content %}
+{% endblock content %}

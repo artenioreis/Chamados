@@ -1,54 +1,47 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="row mt-4">
-    <div class="col-12 mb-3">
-        <!-- Logo carregada de URL externa -->
-        <img src="{% if system_settings and system_settings.logo_filename %}{{ url_for('static', filename='uploads/' + system_settings.logo_filename) }}{% else %}https://neosul.com.br/clientes/1/img/logo.png{% endif %}" alt="Logo" class="brand-logo">
-    </div>
-</div>
-
-    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
-        <h1><i class="fas fa-columns me-2"></i>Kanban de Chamados</h1>
-        
-        <!-- Formulário de Busca -->
-        <form method="GET" action="{{ url_for('main.tickets_kanban') }}" class="d-flex" style="min-width: 300px;">
-            <input class="form-control me-2" type="search" name="q" placeholder="Buscar por título ou ID..." value="{{ request.args.get('q', '') }}" aria-label="Buscar">
-            <button class="btn btn-outline-primary" type="submit">Buscar</button>
-        </form>
-    </div>
-
-    {% if not tickets and request.args.get('q') %}
-        <div class="alert alert-info mt-4" role="alert">
-            <h4 class="alert-heading">Nenhum resultado encontrado para "{{ request.args.get('q') }}"</h4>
-            <p>Tente refinar sua busca. Para ver todos os chamados, <a href="{{ url_for('main.tickets_kanban') }}" class="alert-link">limpe a busca</a>.</p>
+    <div class="row align-items-center mb-5 mt-4">
+        <div class="col-md-8">
+            <h1 class="display-5 fw-bold text-gradient mb-2">Fluxo de Chamados</h1>
+            <p class="text-muted fs-5">Gerencie os atendimentos através do quadro Kanban.</p>
         </div>
-    {% endif %}
+        <div class="col-md-4 text-md-end d-none d-md-block">
+            <img src="{% if system_settings and system_settings.logo_filename %}{{ url_for('static', filename='uploads/' + system_settings.logo_filename) }}{% else %}https://neosul.com.br/clientes/1/img/logo.png{% endif %}" alt="Logo" class="brand-logo mb-0">
+        </div>
+    </div>
 
-    <div class="kanban-container d-flex flex-row overflow-auto pb-4 pt-2 px-2">
-        {% set status_colors = {
-            'Aberto': 'bg-primary text-white',
-            'Em Atendimento': 'bg-warning text-dark',
-            'Resolvido': 'bg-success text-white',
-            'Fechado': 'bg-secondary text-white'
+    <div class="kanban-container d-flex flex-row overflow-auto pb-5 pt-2 px-2">
+        {% set status_info = {
+            'Aberto': {'color': 'var(--primary)', 'bg': 'rgba(67, 97, 238, 0.05)', 'icon': 'fa-envelope-open'},
+            'Em Atendimento': {'color': 'var(--warning)', 'bg': 'rgba(255, 209, 102, 0.05)', 'icon': 'fa-spinner'},
+            'Resolvido': {'color': 'var(--success)', 'bg': 'rgba(6, 214, 160, 0.05)', 'icon': 'fa-check-circle'},
+            'Fechado': {'color': 'var(--text-muted)', 'bg': 'rgba(141, 153, 174, 0.05)', 'icon': 'fa-archive'}
         } %}
         {% set statuses = ['Aberto', 'Em Atendimento', 'Resolvido', 'Fechado'] %}
         {% for status in statuses %}
-            <div class="card bg-light shadow-sm me-3 kanban-column">
-                <div class="card-header text-center {{ status_colors.get(status, 'bg-secondary text-white') }}">
-                    <h4 class="mb-0">{{ status }}</h4>
+            {% set info = status_info.get(status) %}
+            <div class="me-4 kanban-column animate-fade-in" style="background: {{ info.bg }};">
+                <div class="kanban-header d-flex justify-content-between align-items-center mb-3 px-2">
+                    <h5 class="mb-0 fw-bold" style="color: {{ info.color }}">
+                        <i class="fas {{ info.icon }} me-2"></i>{{ status }}
+                    </h5>
+                    {% set count = tickets | selectattr('status', 'equalto', status) | list | length %}
+                    <span class="badge rounded-pill bg-white text-muted border shadow-sm">{{ count }}</span>
                 </div>
-                <div class="card-body p-2 kanban-column-body" id="kanban-{{ status.lower().replace(' ', '-') }}" data-status="{{ status }}">
+                
+                <div class="kanban-column-body px-1" id="kanban-{{ status.lower().replace(' ', '-') }}" data-status="{{ status }}">
                     {% set filtered_tickets = tickets | selectattr('status', 'equalto', status) | list %}
                     {% if filtered_tickets %}
                         {% for ticket in filtered_tickets %}
-                            <div class="mb-2 kanban-card" data-ticket-id="{{ ticket.id }}">
+                            <div class="mb-3 kanban-card animate-fade-in" data-ticket-id="{{ ticket.id }}">
                                 {% include 'components/ticket_card.html' %}
                             </div>
                         {% endfor %}
                     {% else %}
                         {% if not request.args.get('q') %}
-                            <div class="alert alert-secondary text-center small mt-3" role="alert">
-                                Nenhum chamado neste status.
+                            <div class="text-center py-5 opacity-50">
+                                <i class="fas fa-inbox d-block mb-2 fs-2"></i>
+                                <span class="small">Vazio</span>
                             </div>
                         {% endif %}
                     {% endif %}
@@ -56,4 +49,4 @@
             </div>
         {% endfor %}
     </div>
-{% endblock content %}
+{% endblock content %}
