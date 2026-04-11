@@ -3,7 +3,7 @@
 <div class="row mt-4">
     <div class="col-12 mb-3">
         <!-- Logo carregada de URL externa -->
-        <img src="{% if system_settings and system_settings.logo_filename %}{{ url_for('static', filename='uploads/' + system_settings.logo_filename) }}{% else %}https://neosul.com.br/clientes/1/img/logo.png{% endif %}" alt="Logo" style="max-width: 250px; height: auto;">
+        <img src="{% if system_settings and system_settings.logo_filename %}{{ url_for('static', filename='uploads/' + system_settings.logo_filename) }}{% else %}https://neosul.com.br/clientes/1/img/logo.png{% endif %}" alt="Logo" class="brand-logo">
     </div>
 </div>
 
@@ -24,11 +24,17 @@
         </div>
     {% endif %}
 
-    <div class="d-flex flex-row overflow-auto pb-3 kanban-container">
+    <div class="kanban-container d-flex flex-row overflow-auto pb-4 pt-2 px-2">
+        {% set status_colors = {
+            'Aberto': 'bg-primary text-white',
+            'Em Atendimento': 'bg-warning text-dark',
+            'Resolvido': 'bg-success text-white',
+            'Fechado': 'bg-secondary text-white'
+        } %}
         {% set statuses = ['Aberto', 'Em Atendimento', 'Resolvido', 'Fechado'] %}
         {% for status in statuses %}
             <div class="card bg-light shadow-sm me-3 kanban-column">
-                <div class="card-header text-center bg-secondary text-white">
+                <div class="card-header text-center {{ status_colors.get(status, 'bg-secondary text-white') }}">
                     <h4 class="mb-0">{{ status }}</h4>
                 </div>
                 <div class="card-body p-2 kanban-column-body" id="kanban-{{ status.lower().replace(' ', '-') }}" data-status="{{ status }}">

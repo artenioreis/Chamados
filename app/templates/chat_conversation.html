@@ -17,7 +17,7 @@
         </div>
     </div>
 
-    <div class="card-body" id="chat-box" style="height: 400px; overflow-y: auto; display: flex; flex-direction: column;">
+    <div class="card-body px-2 py-3" id="chat-box" style="height: 60vh; max-height: 600px; overflow-y: auto; display: flex; flex-direction: column; background: #fdfdfd;">
         </div>
     <div class="card-footer">
         <form id="chat-form" method="POST" action="{{ url_for('main.chat_conversation', recipient_id=recipient.id) }}" enctype="multipart/form-data">
@@ -99,7 +99,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             const messageElement = `
-                <div class="d-flex flex-column mb-2 message-item ${messageClass}" style="max-width: 75%;">
+                <div class="d-flex flex-column mb-3 message-item ${messageClass}" style="max-width: 85%;">
                     <div class="p-2 rounded ${bubbleClass}">
                         ${contentHtml}
                         ${attachmentHtml}

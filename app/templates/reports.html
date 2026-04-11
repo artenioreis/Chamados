@@ -2,7 +2,7 @@
 {% block content %}
 <div class="row mt-4">
     <div class="col-12 mb-3 d-print-none">
-       <img src="{% if system_settings and system_settings.logo_filename %}{{ url_for('static', filename='uploads/' + system_settings.logo_filename) }}{% else %}https://neosul.com.br/clientes/1/img/logo.png{% endif %}" alt="Logo" style="max-width: 250px; height: auto;">
+       <img src="{% if system_settings and system_settings.logo_filename %}{{ url_for('static', filename='uploads/' + system_settings.logo_filename) }}{% else %}https://neosul.com.br/clientes/1/img/logo.png{% endif %}" alt="Logo" class="brand-logo">
     </div>
     
     <div class="d-flex justify-content-between align-items-center mb-4 d-print-none">
@@ -19,24 +19,26 @@
                 </div>
                 <div class="card-body">
                     {% if tickets_per_user %}
-                        <table class="table table-striped table-hover">
-                            <thead>
-                                <tr>
-                                    <th scope="col">#</th>
-                                    <th scope="col">Nome do Solicitante</th>
-                                    <th scope="col" class="text-center">Total de Chamados</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for user in tickets_per_user %}
-                                <tr>
-                                    <th scope="row">{{ loop.index }}</th>
-                                    <td>{{ user.name }}</td>
-                                    <td class="text-center">{{ user.ticket_count }}</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">#</th>
+                                        <th scope="col">Nome do Solicitante</th>
+                                        <th scope="col" class="text-center">Total de Chamados</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for user in tickets_per_user %}
+                                    <tr>
+                                        <th scope="row">{{ loop.index }}</th>
+                                        <td>{{ user.name }}</td>
+                                        <td class="text-center">{{ user.ticket_count }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
                     {% else %}
                         <p class="text-muted">Nenhum chamado aberto ainda para gerar este relatório.</p>
                     {% endif %}
@@ -57,24 +59,26 @@
                     <hr>
                     <h6>Detalhes por Chamado Fechado:</h6>
                     {% if closing_time_details %}
-                        <table class="table table-sm table-hover">
-                            <thead>
-                                <tr>
-                                    <th>ID</th>
-                                    <th>Título</th>
-                                    <th>Tempo</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for detail in closing_time_details %}
-                                <tr>
-                                    <td>#{{ detail.id }}</td>
-                                    <td>{{ detail.title | truncate(30, True) }}</td>
-                                    <td>{{ detail.duration_str }}</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Título</th>
+                                        <th>Tempo</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for detail in closing_time_details %}
+                                    <tr>
+                                        <td>#{{ detail.id }}</td>
+                                        <td>{{ detail.title | truncate(30, True) }}</td>
+                                        <td>{{ detail.duration_str }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
                     {% else %}
                         <p class="text-muted">Nenhum chamado fechado ainda para gerar este relatório.</p>
                     {% endif %}

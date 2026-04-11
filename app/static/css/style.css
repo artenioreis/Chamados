@@ -3,10 +3,22 @@
    Com TailwindCSS, a maior parte do estilo é aplicada diretamente nos templates. */
 
 /* Exemplo de estilo para o Kanban */
+:root {
+    --primary-color: #4361ee;
+    --secondary-color: #3f37c9;
+    --success-color: #4cc9f0;
+    --info-color: #4895ef;
+    --warning-color: #f72585;
+    --light-bg: #f8f9fa;
+    --card-shadow: 0 10px 20px rgba(0, 0, 0, 0.05);
+    --transition-speed: 0.3s;
+}
+
+/* Kanban */
 .kanban-column {
-    min-width: 280px;
-    max-width: 320px;
-    flex-shrink: 0;
+    flex: 0 0 300px;
+    margin-right: 1.5rem;
+    max-width: 90vw; /* Garante que não ultrapasse a tela em mobile */
 }
 
 .kanban-card {
@@ -15,8 +27,8 @@
 /* Estilos para o Kanban Drag-and-Drop */
 
 .kanban-column {
-    min-width: 300px; /* Largura mínima da coluna */
-    max-width: 320px;
+    flex: 0 0 300px;
+    max-width: 90vw;
     flex-shrink: 0;
 }
 
@@ -40,21 +52,29 @@
 
 /* Opção 1: Background com Gradiente Suave */
 body {
-    background: linear-gradient(to bottom right, #9cc4eb, #e9ecef);
-    background-attachment: fixed; /* Mantém o gradiente fixo durante o scroll */
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    background-attachment: fixed;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
-/* Deixa os cards com um leve destaque */
 .card {
     border: none;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+    border-radius: 12px;
+    box-shadow: var(--card-shadow);
+    transition: transform var(--transition-speed), box-shadow var(--transition-speed);
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
 }
 
 /* --- ESTILO ADICIONADO PARA O POP-UP --- */
 /* Estilos para Notificações (Toasts) */
 .toast {
-    min-width: 400px; /* Define uma largura mínima maior para o pop-up */
-    font-size: 1rem;  /* Aumenta o tamanho da fonte dentro do pop-up */
+    max-width: 90vw; /* Responsivo em mobile */
+    min-width: 300px;
+    border-radius: 12px;
 }
 /* --- FIM DO ESTILO ADICIONADO --- */
 
@@ -64,4 +84,16 @@ body {
     .no-print, .navbar {
         display: none !important;
     }
+}
+.brand-logo {
+    max-width: 100%;
+    width: 250px;
+    height: auto;
+    margin-bottom: 1.5rem;
+}
+
+.navbar-nav .nav-link {
+    white-space: nowrap;
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
 }

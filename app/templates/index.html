@@ -3,7 +3,7 @@
 <div class="row mt-4">
     <div class="col-12 mb-3">
         <!-- Logo carregada de URL externa -->
-        <img src="{% if system_settings and system_settings.logo_filename %}{{ url_for('static', filename='uploads/' + system_settings.logo_filename) }}{% else %}https://neosul.com.br/clientes/1/img/logo.png{% endif %}" alt="Logo" style="max-width: 250px; height: auto;">
+        <img src="{% if system_settings and system_settings.logo_filename %}{{ url_for('static', filename='uploads/' + system_settings.logo_filename) }}{% else %}https://neosul.com.br/clientes/1/img/logo.png{% endif %}" alt="Logo" class="brand-logo">
     </div>
 </div>
 
@@ -20,7 +20,7 @@
     {% if tickets %}
         <div class="row">
             {% for ticket in tickets %}
-                <div class="col-lg-4 col-md-6 mb-4">
+                <div class="col-12 col-md-6 col-lg-4 mb-4">
                     {% include 'components/ticket_card.html' %}
                 </div>
             {% endfor %}
