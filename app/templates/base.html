@@ -37,6 +37,16 @@
         
         {% block content %}{% endblock %}
     </main>
+    
+    <footer class="dev-footer text-center">
+        <div class="container">
+            <a href="#" class="dev-brand">
+                <img src="{{ url_for('static', filename='img/arte_code_logo.png') }}" alt="Arte Code" class="dev-logo">
+                <span class="dev-name">Desenvolvido por Arte Code</span>
+            </a>
+            <p class="text-muted small mt-3 mb-0">&copy; 2025 Sistema de Chamados. Todos os direitos reservados.</p>
+        </div>
+    </footer>
 
     <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1100">
         <div id="updateToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
