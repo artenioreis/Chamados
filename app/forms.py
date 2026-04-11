@@ -17,17 +17,18 @@ class LoginForm(FlaskForm):
 class RegistrationForm(FlaskForm):
     name = StringField('Nome Completo', validators=[DataRequired(), Length(min=2, max=100)])
     email = StringField('Email', validators=[DataRequired(), Email()])
-    sector = SelectField('Setor', choices=[
-        ('TI', 'TI'), ('Vendas', 'Vendas'), ('Faturamento', 'Faturamento'),
-        ('Contas a Pagar', 'Contas a Pagar'), ('Contas a Receber', 'Contas a Receber'),
-        ('RH', 'RH'), ('Marketing', 'Marketing'), ('Outros', 'Outros')
-    ], validators=[DataRequired()])
+    sector = SelectField('Setor', choices=[], validators=[DataRequired()])
     password = PasswordField('Senha', validators=[DataRequired(), Length(min=6)])
     confirm_password = PasswordField('Confirmar Senha', validators=[DataRequired(), EqualTo('password', message='As senhas devem ser iguais.')])
     access_level = SelectField('Nível de Acesso', choices=[
         ('colaborador', 'Colaborador'), ('tecnico', 'Técnico'), ('administrador', 'Administrador')
     ], validators=[DataRequired()])
     submit = SubmitField('Cadastrar')
+
+    def __init__(self, *args, **kwargs):
+        super(RegistrationForm, self).__init__(*args, **kwargs)
+        from app.models import Sector
+        self.sector.choices = [(s.name, s.name) for s in Sector.query.order_by(Sector.name).all()]
 
     def validate_email(self, email):
         user = User.query.filter_by(email=email.data).first()
@@ -41,17 +42,8 @@ class TicketForm(FlaskForm):
         FileAllowed(['jpg', 'png', 'jpeg', 'gif'], 'Apenas imagens são permitidas!')
     ])
     
-    origin_sector = SelectField('Setor de Origem', choices=[
-        ('TI', 'TI'), ('Vendas', 'Vendas'), ('Faturamento', 'Faturamento'),
-        ('Contas a Pagar', 'Contas a Pagar'), ('Contas a Receber', 'Contas a Receber'),
-        ('RH', 'RH'), ('Marketing', 'Marketing'), ('Outros', 'Outros')
-    ], validators=[DataRequired()])
-    
-    target_sector = SelectField('Setor de Destino', choices=[
-        ('TI', 'TI'), ('Vendas', 'Vendas'), ('Faturamento', 'Faturamento'),
-        ('Contas a Pagar', 'Contas a Pagar'), ('Contas a Receber', 'Contas a Receber'),
-        ('RH', 'RH'), ('Marketing', 'Marketing'), ('Outros', 'Outros')
-    ], validators=[DataRequired()])
+    origin_sector = SelectField('Setor de Origem', choices=[], validators=[DataRequired()])
+    target_sector = SelectField('Setor de Destino', choices=[], validators=[DataRequired()])
     
     priority = SelectField('Prioridade', choices=[
         ('baixa', 'Baixa'),
@@ -60,6 +52,13 @@ class TicketForm(FlaskForm):
     ], validators=[DataRequired()])
     
     submit = SubmitField('Abrir Chamado')
+
+    def __init__(self, *args, **kwargs):
+        super(TicketForm, self).__init__(*args, **kwargs)
+        from app.models import Sector
+        sectors = [(s.name, s.name) for s in Sector.query.order_by(Sector.name).all()]
+        self.origin_sector.choices = sectors
+        self.target_sector.choices = sectors
 
 class CommentForm(FlaskForm):
     content = TextAreaField('Adicionar um novo comentário', validators=[DataRequired(), Length(min=5)])

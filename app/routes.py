@@ -5,7 +5,7 @@ from werkzeug.utils import secure_filename
 from flask import render_template, url_for, flash, redirect, request, abort, jsonify, Blueprint, current_app, send_from_directory, session, Response
 from app import db
 from app.forms import LoginForm, RegistrationForm, TicketForm, CommentForm, TicketUpdateForm, ChangePasswordForm, ChatMessageForm, SettingsForm
-from app.models import User, Ticket, Comment, TicketHistory, ChatMessage, SystemSettings
+from app.models import User, Ticket, Comment, TicketHistory, ChatMessage, SystemSettings, Sector
 from flask_login import login_user, current_user, logout_user, login_required
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy import func, or_, cast, String, not_, and_
@@ -417,8 +417,39 @@ def settings():
         
     elif request.method == 'GET':
         form.auto_close_days.data = settings.auto_close_days
+    
+    sectors = Sector.query.order_by(Sector.name).all()
         
-    return render_template('settings.html', title='Configurações', form=form)
+    return render_template('settings.html', title='Configurações', form=form, sectors=sectors)
+
+@main.route('/add_sector', methods=['POST'])
+@login_required
+def add_sector():
+    if not is_admin():
+        abort(403)
+    name = request.form.get('name')
+    if name:
+        existing = Sector.query.filter_by(name=name).first()
+        if existing:
+            flash(f'O setor "{name}" já existe.', 'warning')
+        else:
+            new_sector = Sector(name=name)
+            db.session.add(new_sector)
+            db.session.commit()
+            flash(f'Setor "{name}" adicionado com sucesso!', 'success')
+    return redirect(url_for('main.settings'))
+
+@main.route('/delete_sector/<int:id>', methods=['POST'])
+@login_required
+def delete_sector(id):
+    if not is_admin():
+        abort(403)
+    sector = Sector.query.get_or_404(id)
+    name = sector.name
+    db.session.delete(sector)
+    db.session.commit()
+    flash(f'Setor "{name}" removido com sucesso!', 'success')
+    return redirect(url_for('main.settings'))
 
 @main.route('/check_updates')
 @login_required

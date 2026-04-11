@@ -112,6 +112,15 @@ body {
     min-height: 500px;
 }
 
+/* Esconder barra de rolagem mas manter funcionalidade */
+.hide-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+.hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
 .kanban-card {
     background: var(--bg-white);
     border-radius: var(--radius-md);

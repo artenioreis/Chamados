@@ -85,6 +85,17 @@ def create_app():
             db.session.commit()
             print("Configurações padrão do sistema criadas!")
 
+        # Inicializa a tabela de setores com os valores padrão se estiver vazia
+        if not models.Sector.query.first():
+            default_sectors = [
+                'TI', 'Vendas', 'Faturamento', 'Contas a Pagar', 
+                'Contas a Receber', 'RH', 'Marketing', 'Outros'
+            ]
+            for sector_name in default_sectors:
+                db.session.add(models.Sector(name=sector_name))
+            db.session.commit()
+            print("Setores padrão criados!")
+
     return app
 
 @login_manager.user_loader
